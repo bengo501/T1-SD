@@ -100,22 +100,3 @@ Para verificar:
 grep -n "||" mxOUT.txt
 grep -n ".." mxOUT.txt
 ```
-
-## Características Técnicas
-
-- **Serialização**: Usa a versão do PP2PLink com serialização de estruturas JSON
-- **Relógios Lógicos**: Implementa relógios lógicos de Lamport
-- **Comunicação TCP**: Usa conexões TCP persistentes entre processos
-- **Debug**: Modo debug disponível para acompanhar mensagens
-
-## Autores
-
-- **Professor**: Fernando Dotti (https://fldotti.github.io/)
-- **Disciplina**: Sistemas Distribuídos - PUCRS
-- **Semestre**: 2023/1
-
-## Bibliografia
-
-- Reliable and Secure Distributed Programming
-- Christian Cachin, Rachid Gerraoui, Luís Rodrigues
-- Slides dos autores em http://distributedprogramming.net , "teaching" 
