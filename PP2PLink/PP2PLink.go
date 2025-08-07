@@ -7,6 +7,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -30,6 +31,7 @@ type PP2PLink struct {
 	Req   chan PP2PLink_Req_Message
 	Run   bool
 	Cache map[string]net.Conn
+	mutex sync.RWMutex // ADICIONADO: Mutex para proteger acesso concorrente ao Cache
 }
 
 func (module *PP2PLink) Init(address string) {
@@ -98,16 +100,29 @@ func (module *PP2PLink) Send(message PP2PLink_Req_Message) {
 	var ok bool
 	var err error
 
+	// ADICIONADO: Proteção com mutex para leitura do Cache
+	module.mutex.RLock()
 	if conn, ok = module.Cache[message.To]; ok {
-
+		module.mutex.RUnlock()
 	} else {
-		conn, err = net.Dial("tcp", message.To)
-		if err != nil {
-			fmt.Println(err)
-			return
+		module.mutex.RUnlock()
+		// ADICIONADO: Proteção com mutex para escrita no Cache
+		module.mutex.Lock()
+		// Verifica novamente após obter o lock de escrita
+		if conn, ok = module.Cache[message.To]; ok {
+			module.mutex.Unlock()
+		} else {
+			conn, err = net.Dial("tcp", message.To)
+			if err != nil {
+				module.mutex.Unlock()
+				fmt.Println(err)
+				return
+			}
+			module.Cache[message.To] = conn
+			module.mutex.Unlock()
 		}
-		module.Cache[message.To] = conn
 	}
+	
 	messageAsString := MessageToString(message.Message)
 	strSize := strconv.Itoa(len(messageAsString))
 	for len(strSize) < 4 {
