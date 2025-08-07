@@ -53,6 +53,9 @@ func main() {
 	var dmx *DIMEX.DIMEX_Module = DIMEX.NewDIMEX(addresses, id, true)
 	fmt.Println(dmx)
 
+	// INICIALIZA O MÓDULO DIMEX
+	dmx.Start()
+
 	// abre arquivo que TODOS processos devem poder usar
 	file, err := os.OpenFile("./mxOUT.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -91,4 +94,4 @@ func main() {
 		dmx.Req <- DIMEX.EXIT //
 		fmt.Println("[ APP id: ", id, " FORA   MX ]")
 	}
-} 
+}
