@@ -20,11 +20,11 @@
 package DIMEX
 
 import (
-	PP2PLink "SD/PP2PLink"  // Módulo de comunicação ponto-a-ponto
-	"fmt"                     // Para impressão de debug
-	"net"                     // ADICIONADO: Para conexões TCP (map[string]net.Conn)
-	"strconv"                 // ADICIONADO: Para conversão de strings para int (timestamps)
-	"strings"                 // Para manipulação de strings (Contains)
+	PP2PLink "SD/PP2PLink" // Módulo de comunicação ponto-a-ponto
+	"fmt"                  // Para impressão de debug
+	"net"                  // ADICIONADO: Para conexões TCP (map[string]net.Conn)
+	"strconv"              // ADICIONADO: Para conversão de strings para int (timestamps)
+	"strings"              // Para manipulação de strings (Contains)
 )
 
 // ------------------------------------------------------------------------------------
@@ -33,17 +33,19 @@ import (
 
 // State: Enumeração dos estados possíveis de um processo no algoritmo de exclusão mútua
 type State int
+
 const (
-	noMX State = iota   // Estado: não quer acessar a seção crítica
+	noMX   State = iota // Estado: não quer acessar a seção crítica
 	wantMX              // Estado: quer acessar a seção crítica (aguardando respostas)
-	inMX                 // Estado: está dentro da seção crítica
+	inMX                // Estado: está dentro da seção crítica
 )
 
 // dmxReq: Enumeração dos tipos de requisições que a aplicação pode fazer
 type dmxReq int
+
 const (
-	ENTER dmxReq = iota  // Requisição para entrar na seção crítica
-	EXIT                 // Requisição para sair da seção crítica
+	ENTER dmxReq = iota // Requisição para entrar na seção crítica
+	EXIT                // Requisição para sair da seção crítica
 )
 
 // dmxResp: Estrutura vazia usada como sinal para informar que pode acessar a SC
@@ -79,9 +81,9 @@ func NewDIMEX(_addresses []string, _id int, _dbg bool) *DIMEX_Module {
 		Ind:   make(chan PP2PLink.PP2PLink_Ind_Message, 1),
 		Req:   make(chan PP2PLink.PP2PLink_Req_Message, 1),
 		Run:   false,
-		Cache: make(map[string]net.Conn),  // ADICIONADO: Cache de conexões TCP
+		Cache: make(map[string]net.Conn), // ADICIONADO: Cache de conexões TCP
 	}
-	p2p.Init(_addresses[_id])  // MODIFICADO: Usa Init() ao invés de NewPP2PLink()
+	p2p.Init(_addresses[_id]) // MODIFICADO: Usa Init() ao invés de NewPP2PLink()
 
 	// Criação da estrutura principal
 	dmx := &DIMEX_Module{
@@ -90,11 +92,11 @@ func NewDIMEX(_addresses []string, _id int, _dbg bool) *DIMEX_Module {
 
 		addresses: _addresses,
 		id:        _id,
-		st:        noMX,                    // Estado inicial: não quer SC
+		st:        noMX, // Estado inicial: não quer SC
 		waiting:   make([]bool, len(_addresses)),
-		lcl:       0,                       // Relógio lógico inicial: 0
-		reqTs:     0,                       // Timestamp inicial: 0
-		nbrResps:  0,                       // ADICIONADO: Contador de respostas
+		lcl:       0, // Relógio lógico inicial: 0
+		reqTs:     0, // Timestamp inicial: 0
+		nbrResps:  0, // ADICIONADO: Contador de respostas
 		dbg:       _dbg,
 
 		Pp2plink: p2p}
@@ -161,10 +163,13 @@ func (module *DIMEX_Module) handleUponReqEntry() {
 							trigger [ pl , Send | [ reqEntry, r, myTs ]
 		    			estado := queroSC
 	*/
-	module.lcl++                    // IMPLEMENTADO: Incrementa relógio lógico
-	module.reqTs = module.lcl       // IMPLEMENTADO: Define timestamp da requisição
-	module.nbrResps = 0             // IMPLEMENTADO: Zera contador de respostas
-	
+	module.outDbg("=== ENTRADA NA SEÇÃO CRÍTICA ===")
+	module.lcl++              // IMPLEMENTADO: Incrementa relógio lógico
+	module.reqTs = module.lcl // IMPLEMENTADO: Define timestamp da requisição
+	module.nbrResps = 0       // IMPLEMENTADO: Zera contador de respostas
+
+	module.outDbg(fmt.Sprintf("Enviando requisições para %d processos", len(module.addresses)-1))
+
 	// IMPLEMENTADO: Envia requisição para todos os outros processos
 	for i, addr := range module.addresses {
 		if i != module.id {
@@ -173,11 +178,13 @@ func (module *DIMEX_Module) handleUponReqEntry() {
 				"timestamp": strconv.Itoa(module.reqTs),
 				"processId": strconv.Itoa(module.id),
 			}
+			module.outDbg(fmt.Sprintf("Enviando para processo %d em %s", i, addr))
 			module.sendToLinkWithData(addr, "reqEntry", msgData, "    ")
 		}
 	}
-	
-	module.st = wantMX              // IMPLEMENTADO: Muda estado para "quer SC"
+
+	module.st = wantMX // IMPLEMENTADO: Muda estado para "quer SC"
+	module.outDbg("Estado alterado para wantMX")
 }
 
 // handleUponReqExit: IMPLEMENTADO - Processa saída da seção crítica
@@ -195,8 +202,8 @@ func (module *DIMEX_Module) handleUponReqExit() {
 			module.sendToLink(module.addresses[i], "respOK", "    ")
 		}
 	}
-	
-	module.st = noMX                // IMPLEMENTADO: Muda estado para "não quer SC"
+
+	module.st = noMX // IMPLEMENTADO: Muda estado para "não quer SC"
 	// IMPLEMENTADO: Limpa a lista de processos aguardando
 	for i := range module.waiting {
 		module.waiting[i] = false
@@ -219,10 +226,15 @@ func (module *DIMEX_Module) handleUponDeliverRespOk(msgOutro PP2PLink.PP2PLink_I
 		  					    estado := estouNaSC
 
 	*/
-	module.nbrResps++               // IMPLEMENTADO: Incrementa contador de respostas
+	module.outDbg("=== RECEBEU RESPOSTA OK ===")
+	module.nbrResps++ // IMPLEMENTADO: Incrementa contador de respostas
+	module.outDbg(fmt.Sprintf("Respostas recebidas: %d/%d", module.nbrResps, len(module.addresses)-1))
+
 	if module.nbrResps == len(module.addresses)-1 {
-		module.Ind <- dmxResp{}      // IMPLEMENTADO: Libera acesso à SC
-		module.st = inMX             // IMPLEMENTADO: Muda estado para "está na SC"
+		module.outDbg("=== LIBERANDO ACESSO À SEÇÃO CRÍTICA ===")
+		module.Ind <- dmxResp{} // IMPLEMENTADO: Libera acesso à SC
+		module.st = inMX        // IMPLEMENTADO: Muda estado para "está na SC"
+		module.outDbg("Estado alterado para inMX")
 	}
 }
 
@@ -240,32 +252,53 @@ func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink
 		        				então  postergados := postergados + [p, r ]
 		     					lts.ts := max(lts.ts, rts.ts)
 	*/
-	
+
 	// IMPLEMENTADO: Extrai timestamp da mensagem para comparação
 	otherTsStr, exists := msgOutro.Message.Data["timestamp"]
 	if !exists {
-		module.outDbg("Erro: timestamp não encontrado na mensagem")
-		return
+		module.outDbg("Aviso: timestamp não encontrado, usando timestamp padrão")
+		otherTsStr = "0" // Usa timestamp padrão se não encontrado
 	}
 	otherTs, err := strconv.Atoi(otherTsStr)
 	if err != nil {
-		module.outDbg("Erro ao converter timestamp: " + err.Error())
-		return
+		module.outDbg("Erro ao converter timestamp: " + err.Error() + ", usando 0")
+		otherTs = 0 // Usa 0 se erro na conversão
 	}
-	
-	// IMPLEMENTADO: Identifica qual processo enviou a mensagem
+
+	// IMPLEMENTADO: Identifica qual processo enviou a mensagem (CORRIGIDO)
 	senderId := -1
+	remoteAddr := msgOutro.From
+	// Remove a porta se presente para comparação
+	if strings.Contains(remoteAddr, ":") {
+		parts := strings.Split(remoteAddr, ":")
+		if len(parts) >= 2 {
+			remoteAddr = parts[0] + ":" + parts[1]
+		}
+	}
+
 	for i, addr := range module.addresses {
-		if strings.Contains(addr, msgOutro.From) {
+		// Compara endereços de forma mais robusta
+		if addr == remoteAddr || strings.Contains(addr, remoteAddr) || strings.Contains(remoteAddr, addr) {
 			senderId = i
 			break
 		}
 	}
+
+	// Se não conseguiu identificar, tenta extrair do processId na mensagem
 	if senderId == -1 {
-		module.outDbg("Erro: não foi possível identificar o processo remetente")
-		return
+		if processIdStr, exists := msgOutro.Message.Data["processId"]; exists {
+			if processId, err := strconv.Atoi(processIdStr); err == nil && processId >= 0 && processId < len(module.addresses) {
+				senderId = processId
+			}
+		}
 	}
-	
+
+	// Se ainda não conseguiu identificar, usa um fallback
+	if senderId == -1 {
+		module.outDbg("Aviso: não foi possível identificar o processo remetente, usando 0")
+		senderId = 0 // Fallback para o primeiro processo
+	}
+
 	// IMPLEMENTADO: Lógica de decisão baseada em estado e timestamp
 	if module.st == noMX || (module.st == wantMX && module.reqTs > otherTs) {
 		// Pode responder OK imediatamente (não está na SC ou tem prioridade)
@@ -323,4 +356,4 @@ func (module *DIMEX_Module) outDbg(s string) {
 	if module.dbg {
 		fmt.Println(". . . . . . . . . . . . [ DIMEX : " + s + " ]")
 	}
-} 
+}
