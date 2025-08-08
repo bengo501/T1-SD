@@ -1,32 +1,32 @@
 # Implementação do Algoritmo de Exclusão Mútua Distribuída (DiMeX)
 
-## 📋 Visão Geral
+## Visão Geral
 
 Este documento explica as mudanças e implementações realizadas no arquivo `DIMEX-Template.go`, transformando um template vazio em um sistema funcional de exclusão mútua distribuída.
 
-## 🎯 Objetivo do Trabalho
+## Objetivo do Trabalho
 
 Implementar o algoritmo de exclusão mútua distribuída que garante que **apenas um processo por vez** possa acessar a seção crítica (SC), mesmo em um sistema distribuído onde processos podem falhar ou mensagens podem ser perdidas.
 
-## 📊 Comparação: Template Original vs Implementação Final
+## Comparação: Template Original vs Implementação Final
 
 ### **Template Original (Vazio)**
-- ✅ Estrutura completa (tipos, structs, canais)
-- ✅ Inicialização básica
-- ✅ Loop principal
-- ✅ Funções auxiliares
-- ❌ **4 funções principais vazias**
-- ❌ **Sem implementação do algoritmo**
+- Estrutura completa (tipos, structs, canais)
+- Inicialização básica
+- Loop principal
+- Funções auxiliares
+- **4 funções principais vazias**
+- **Sem implementação do algoritmo**
 
 ### **Implementação Final (Completa)**
-- ✅ Estrutura completa
-- ✅ Inicialização modificada
-- ✅ Loop principal adaptado
-- ✅ Funções auxiliares melhoradas
-- ✅ **4 funções principais implementadas**
-- ✅ **Algoritmo de exclusão mútua funcional**
+- Estrutura completa
+- Inicialização modificada
+- Loop principal adaptado
+- Funções auxiliares melhoradas
+- **4 funções principais implementadas**
+- **Algoritmo de exclusão mútua funcional**
 
-## 🔧 Mudanças Detalhadas
+## Mudanças Detalhadas
 
 ### **1. IMPORTS ADICIONADOS**
 
@@ -263,7 +263,7 @@ func (module *DIMEX_Module) sendToLink(address string, content string, space str
 
 **Motivo**: Adaptar para usar a estrutura `PP2LinkMessage` com serialização.
 
-## 🔄 Algoritmo Implementado
+## Algoritmo Implementado
 
 ### **Estados do Processo:**
 - `noMX`: Não quer acessar a seção crítica
@@ -291,7 +291,7 @@ func (module *DIMEX_Module) sendToLink(address string, content string, space str
    - Muda estado para `noMX`
    - Limpa lista de processos aguardando
 
-## 🎯 Propriedades Garantidas
+## Propriedades Garantidas
 
 ### **Exclusão Mútua:**
 - Nunca dois processos estarão na SC simultaneamente
@@ -302,7 +302,7 @@ func (module *DIMEX_Module) sendToLink(address string, content string, space str
 ### **Fairness:**
 - Processos com timestamps menores têm prioridade
 
-## 📈 Melhorias Implementadas
+## Melhorias Implementadas
 
 1. **Relógios Lógicos de Lamport** para ordenação consistente
 2. **Serialização JSON** para mensagens complexas
@@ -311,7 +311,7 @@ func (module *DIMEX_Module) sendToLink(address string, content string, space str
 5. **Debug mode** para acompanhar mensagens
 6. **Timestamps** para resolver conflitos de prioridade
 
-## 🧪 Como Testar
+## Como Testar
 
 ```bash
 # Terminal 1
@@ -324,13 +324,13 @@ go run useDIMEX-f.go 1 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002
 go run useDIMEX-f.go 2 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002
 ```
 
-## ✅ Verificação da Corretude
+## Verificação da Corretude
 
 O arquivo `mxOUT.txt` gerado deve conter apenas sequências de `|.` (entrada e saída da SC). Nunca deve conter:
 - `||` (duas entradas consecutivas)
 - `..` (duas saídas consecutivas)
 
-## 📚 Bibliografia
+## Bibliografia
 
 - Reliable and Secure Distributed Programming
 - Christian Cachin, Rachid Gerraoui, Luís Rodrigues
