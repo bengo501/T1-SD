@@ -3,7 +3,7 @@
 Write-Host "=== Visualizador de Logs DIMEX ===" -ForegroundColor Green
 
 # Verifica se os arquivos de log existem
-$logs = @("terminal_0.log", "terminal_1.log", "terminal_2.log", "mxOUT.txt")
+$logs = @("logs/terminal_0.log", "logs/terminal_1.log", "logs/terminal_2.log", "logs/mxOUT.txt")
 $existingLogs = @()
 
 foreach ($log in $logs) {
@@ -33,27 +33,27 @@ $choice = Read-Host "`nDigite sua escolha (1-6)"
 
 switch ($choice) {
     "1" {
-        if (Test-Path "mxOUT.txt") {
+        if (Test-Path "logs/mxOUT.txt") {
             Write-Host "`n=== mxOUT.txt ===" -ForegroundColor Green
-            Get-Content "mxOUT.txt"
+            Get-Content "logs/mxOUT.txt"
         }
     }
     "2" {
-        if (Test-Path "terminal_0.log") {
+        if (Test-Path "logs/terminal_0.log") {
             Write-Host "`n=== terminal_0.log (Processo 0) ===" -ForegroundColor Green
-            Get-Content "terminal_0.log"
+            Get-Content "logs/terminal_0.log"
         }
     }
     "3" {
-        if (Test-Path "terminal_1.log") {
+        if (Test-Path "logs/terminal_1.log") {
             Write-Host "`n=== terminal_1.log (Processo 1) ===" -ForegroundColor Green
-            Get-Content "terminal_1.log"
+            Get-Content "logs/terminal_1.log"
         }
     }
     "4" {
-        if (Test-Path "terminal_2.log") {
+        if (Test-Path "logs/terminal_2.log") {
             Write-Host "`n=== terminal_2.log (Processo 2) ===" -ForegroundColor Green
-            Get-Content "terminal_2.log"
+            Get-Content "logs/terminal_2.log"
         }
     }
     "5" {
@@ -64,9 +64,9 @@ switch ($choice) {
         }
     }
     "6" {
-        if (Test-Path "mxOUT.txt") {
+        if (Test-Path "logs/mxOUT.txt") {
             Write-Host "`n=== Monitorando mxOUT.txt (Ctrl+C para parar) ===" -ForegroundColor Green
-            Get-Content "mxOUT.txt" -Wait -Tail 10
+            Get-Content "logs/mxOUT.txt" -Wait -Tail 10
         }
     }
     default {
