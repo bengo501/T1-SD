@@ -173,6 +173,13 @@ func (module *DIMEX_Module) handleUponReqEntry() {
 	module.reqTs = module.lcl // IMPLEMENTADO: Define timestamp da requisição
 	module.nbrResps = 0       // IMPLEMENTADO: Zera contador de respostas
 
+	// CORREÇÃO: Adiciona delay baseado no ID para evitar conflitos de timestamp
+	// Isso garante que cada processo tenha um timestamp único inicial
+	if module.reqTs == 1 {
+		module.reqTs += module.id
+		module.lcl = module.reqTs
+	}
+
 	// MODIFICADO: Se há apenas 1 processo, libera imediatamente
 	if len(module.addresses) == 1 {
 		module.outDbg("=== PROCESSO ÚNICO - LIBERANDO IMEDIATAMENTE ===")
@@ -328,17 +335,32 @@ func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink
 
 	module.outDbg(fmt.Sprintf("Processo %d (endereço: %s) solicitando acesso", senderId, module.addresses[senderId]))
 
-	// IMPLEMENTADO: Lógica de decisão baseada em estado e timestamp
-	if module.st == noMX || (module.st == wantMX && module.reqTs > otherTs) {
-		// Pode responder OK imediatamente (não está na SC ou tem prioridade)
+	// CORREÇÃO FINAL: Lógica de decisão baseada em estado e timestamp
+	// Regra: responde OK se:
+	// 1. Não está na SC (noMX) OU
+	// 2. Está querendo SC mas tem timestamp MAIOR (menor prioridade) OU
+	// 3. Está querendo SC mas tem timestamp IGUAL e ID MAIOR (desempate por ID)
+	// 4. Está na SC (inMX) - deve sempre postergar
+
+	if module.st == inMX {
+		// Se está na SC, sempre posterga
+		module.outDbg(fmt.Sprintf("Postergando resposta para processo %d (está na SC)", senderId))
+		module.waiting[senderId] = true
+		// Atualiza relógio lógico (Lamport)
+		if otherTs > module.lcl {
+			module.lcl = otherTs
+		}
+	} else if module.st == noMX ||
+		(module.st == wantMX && module.reqTs > otherTs) ||
+		(module.st == wantMX && module.reqTs == otherTs && module.id > senderId) {
+		// Pode responder OK imediatamente
 		module.outDbg(fmt.Sprintf("Respondendo OK imediatamente para processo %d", senderId))
-		// CORREÇÃO: Envia para o endereço configurado do processo, não para o endereço da conexão
 		module.sendToLink(module.addresses[senderId], "respOK", "    ")
-	} else if module.st == inMX || (module.st == wantMX && module.reqTs < otherTs) {
-		// Deve postergar a resposta (está na SC ou tem menor prioridade)
+	} else {
+		// Deve postergar a resposta (wantMX com menor prioridade)
 		module.outDbg(fmt.Sprintf("Postergando resposta para processo %d", senderId))
 		module.waiting[senderId] = true
-		// IMPLEMENTADO: Atualiza relógio lógico (Lamport)
+		// Atualiza relógio lógico (Lamport)
 		if otherTs > module.lcl {
 			module.lcl = otherTs
 		}

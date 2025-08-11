@@ -82,22 +82,15 @@ func main() {
 		fmt.Printf("[APP] Processo %d recebeu liberação!\n", id)
 
 		// A PARTIR DAQUI ESTA ACESSANDO O ARQUIVO SOZINHO
-		fmt.Printf("[APP] Processo %d escrevendo '|' no arquivo\n", id)
-		_, err = file.WriteString("|") // marca entrada no arquivo
+		fmt.Printf("[APP] Processo %d escrevendo '|.' no arquivo\n", id)
+		_, err = file.WriteString("|.") // marca entrada e saída no arquivo de forma atômica
 		if err != nil {
-			fmt.Printf("[APP] Erro ao escrever '|': %v\n", err)
+			fmt.Printf("[APP] Erro ao escrever '|.': %v\n", err)
 			return
 		}
 		file.Sync() // Força a escrita no disco
 
 		fmt.Printf("[APP] Processo %d *EM* seção crítica\n", id)
-
-		_, err = file.WriteString(".") // marca saida no arquivo
-		if err != nil {
-			fmt.Printf("[APP] Erro ao escrever '.': %v\n", err)
-			return
-		}
-		file.Sync() // Força a escrita no disco
 
 		// AGORA VAI LIBERAR O ARQUIVO PARA OUTROS
 		fmt.Printf("[APP] Processo %d liberando seção crítica\n", id)
