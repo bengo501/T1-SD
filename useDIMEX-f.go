@@ -48,50 +48,60 @@ func main() {
 
 	id, _ := strconv.Atoi(os.Args[1])
 	addresses := os.Args[2:]
-	// fmt.Print("id: ", id, "   ") fmt.Println(addresses)
+	fmt.Printf("[APP] Iniciando processo %d com endereços: %v\n", id, addresses)
 
 	var dmx *DIMEX.DIMEX_Module = DIMEX.NewDIMEX(addresses, id, true)
-	fmt.Println(dmx)
+	fmt.Printf("[APP] Módulo DIMEX criado: %v\n", dmx)
 
 	// INICIALIZA O MÓDULO DIMEX
 	dmx.Start()
+	fmt.Printf("[APP] Módulo DIMEX iniciado\n")
 
 	// abre arquivo que TODOS processos devem poder usar
+	fmt.Printf("[APP] Abrindo arquivo logs/mxOUT.txt\n")
 	file, err := os.OpenFile("./logs/mxOUT.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Println("Error opening file:", err)
+		fmt.Printf("[APP] Erro ao abrir arquivo: %v\n", err)
 		return
 	}
 	defer file.Close() // Ensure the file is closed at the end of the function
+	fmt.Printf("[APP] Arquivo aberto com sucesso\n")
 
 	// espera para facilitar inicializacao de todos processos (a mao)
+	fmt.Printf("[APP] Aguardando 3 segundos para inicialização...\n")
 	time.Sleep(3 * time.Second)
 
+	fmt.Printf("[APP] Iniciando loop principal\n")
 	for {
 		// SOLICITA ACESSO AO DIMEX
-		fmt.Println("[ APP id: ", id, " PEDE   MX ]")
+		fmt.Printf("[APP] Processo %d solicitando acesso à seção crítica\n", id)
 		dmx.Req <- DIMEX.ENTER
-		//fmt.Println("[ APP id: ", id, " ESPERA MX ]")
+		fmt.Printf("[APP] Processo %d aguardando liberação\n", id)
 		// ESPERA LIBERACAO DO MODULO DIMEX
 		<-dmx.Ind //
+		fmt.Printf("[APP] Processo %d recebeu liberação!\n", id)
 
 		// A PARTIR DAQUI ESTA ACESSANDO O ARQUIVO SOZINHO
+		fmt.Printf("[APP] Processo %d escrevendo '|' no arquivo\n", id)
 		_, err = file.WriteString("|") // marca entrada no arquivo
 		if err != nil {
-			fmt.Println("Error writing to file:", err)
+			fmt.Printf("[APP] Erro ao escrever '|': %v\n", err)
 			return
 		}
+		file.Sync() // Força a escrita no disco
 
-		fmt.Println("[ APP id: ", id, " *EM*   MX ]")
+		fmt.Printf("[APP] Processo %d *EM* seção crítica\n", id)
 
 		_, err = file.WriteString(".") // marca saida no arquivo
 		if err != nil {
-			fmt.Println("Error writing to file:", err)
+			fmt.Printf("[APP] Erro ao escrever '.': %v\n", err)
 			return
 		}
+		file.Sync() // Força a escrita no disco
 
 		// AGORA VAI LIBERAR O ARQUIVO PARA OUTROS
+		fmt.Printf("[APP] Processo %d liberando seção crítica\n", id)
 		dmx.Req <- DIMEX.EXIT //
-		fmt.Println("[ APP id: ", id, " FORA   MX ]")
+		fmt.Printf("[APP] Processo %d *FORA* seção crítica\n", id)
 	}
 }

@@ -118,19 +118,22 @@ func NewDIMEX(_addresses []string, _id int, _dbg bool) *DIMEX_Module {
 func (module *DIMEX_Module) Start() {
 
 	go func() {
+		module.outDbg("=== LOOP PRINCIPAL INICIADO ===")
 		for {
 			select {
 			case dmxR := <-module.Req: // Evento vindo da aplicação
 				if dmxR == ENTER {
-					module.outDbg("app pede mx")
+					module.outDbg("=== EVENTO ENTER RECEBIDO ===")
 					module.handleUponReqEntry() // ENTRADA DO ALGORITMO
 
 				} else if dmxR == EXIT {
-					module.outDbg("app libera mx")
+					module.outDbg("=== EVENTO EXIT RECEBIDO ===")
 					module.handleUponReqExit() // ENTRADA DO ALGORITMO
 				}
 
 			case msgOutro := <-module.Pp2plink.Ind: // Evento vindo de outro processo
+				module.outDbg(fmt.Sprintf("=== MENSAGEM RECEBIDA DE %s ===", msgOutro.From))
+				module.outDbg(fmt.Sprintf("Conteúdo da mensagem: %s", msgOutro.Message.Value))
 				// MODIFICADO: Usa Message.Value ao invés de Message
 				if strings.Contains(msgOutro.Message.Value, "respOK") {
 					module.outDbg("         <<<---- responde! " + msgOutro.Message.Value)
@@ -140,6 +143,8 @@ func (module *DIMEX_Module) Start() {
 					module.outDbg("          <<<---- pede??  " + msgOutro.Message.Value)
 					module.handleUponDeliverReqEntry(msgOutro) // ENTRADA DO ALGORITMO
 
+				} else {
+					module.outDbg("Mensagem desconhecida: " + msgOutro.Message.Value)
 				}
 			}
 		}
@@ -167,6 +172,15 @@ func (module *DIMEX_Module) handleUponReqEntry() {
 	module.lcl++              // IMPLEMENTADO: Incrementa relógio lógico
 	module.reqTs = module.lcl // IMPLEMENTADO: Define timestamp da requisição
 	module.nbrResps = 0       // IMPLEMENTADO: Zera contador de respostas
+
+	// MODIFICADO: Se há apenas 1 processo, libera imediatamente
+	if len(module.addresses) == 1 {
+		module.outDbg("=== PROCESSO ÚNICO - LIBERANDO IMEDIATAMENTE ===")
+		module.Ind <- dmxResp{}
+		module.st = inMX
+		module.outDbg("Estado alterado para inMX")
+		return
+	}
 
 	module.outDbg(fmt.Sprintf("Enviando requisições para %d processos", len(module.addresses)-1))
 
@@ -196,9 +210,12 @@ func (module *DIMEX_Module) handleUponReqExit() {
 		    				estado := naoQueroSC
 							waiting := {}
 	*/
+	module.outDbg("=== SAÍDA DA SEÇÃO CRÍTICA ===")
+
 	// IMPLEMENTADO: Envia resposta OK para todos os processos aguardando
 	for i, isWaiting := range module.waiting {
 		if isWaiting {
+			module.outDbg(fmt.Sprintf("Enviando resposta OK para processo %d em %s", i, module.addresses[i]))
 			module.sendToLink(module.addresses[i], "respOK", "    ")
 		}
 	}
@@ -208,6 +225,7 @@ func (module *DIMEX_Module) handleUponReqExit() {
 	for i := range module.waiting {
 		module.waiting[i] = false
 	}
+	module.outDbg("Estado alterado para noMX")
 }
 
 // ------------------------------------------------------------------------------------
@@ -229,6 +247,15 @@ func (module *DIMEX_Module) handleUponDeliverRespOk(msgOutro PP2PLink.PP2PLink_I
 	module.outDbg("=== RECEBEU RESPOSTA OK ===")
 	module.nbrResps++ // IMPLEMENTADO: Incrementa contador de respostas
 	module.outDbg(fmt.Sprintf("Respostas recebidas: %d/%d", module.nbrResps, len(module.addresses)-1))
+
+	// MODIFICADO: Se há apenas 1 processo, libera imediatamente
+	if len(module.addresses) == 1 {
+		module.outDbg("=== PROCESSO ÚNICO - LIBERANDO IMEDIATAMENTE ===")
+		module.Ind <- dmxResp{}
+		module.st = inMX
+		module.outDbg("Estado alterado para inMX")
+		return
+	}
 
 	if module.nbrResps == len(module.addresses)-1 {
 		module.outDbg("=== LIBERANDO ACESSO À SEÇÃO CRÍTICA ===")
@@ -299,12 +326,17 @@ func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink
 		senderId = 0 // Fallback para o primeiro processo
 	}
 
+	module.outDbg(fmt.Sprintf("Processo %d (endereço: %s) solicitando acesso", senderId, module.addresses[senderId]))
+
 	// IMPLEMENTADO: Lógica de decisão baseada em estado e timestamp
 	if module.st == noMX || (module.st == wantMX && module.reqTs > otherTs) {
 		// Pode responder OK imediatamente (não está na SC ou tem prioridade)
-		module.sendToLink(msgOutro.From, "respOK", "    ")
+		module.outDbg(fmt.Sprintf("Respondendo OK imediatamente para processo %d", senderId))
+		// CORREÇÃO: Envia para o endereço configurado do processo, não para o endereço da conexão
+		module.sendToLink(module.addresses[senderId], "respOK", "    ")
 	} else if module.st == inMX || (module.st == wantMX && module.reqTs < otherTs) {
 		// Deve postergar a resposta (está na SC ou tem menor prioridade)
+		module.outDbg(fmt.Sprintf("Postergando resposta para processo %d", senderId))
 		module.waiting[senderId] = true
 		// IMPLEMENTADO: Atualiza relógio lógico (Lamport)
 		if otherTs > module.lcl {
