@@ -10,15 +10,24 @@ if (Test-Path "logs/terminal_2.log") { Remove-Item "logs/terminal_2.log" -Force 
 
 Write-Host "Arquivos anteriores removidos" -ForegroundColor Cyan
 
+# Compila o projeto primeiro
+Write-Host "Compilando o projeto..." -ForegroundColor Yellow
+go build -o dimex_test.exe useDIMEX-f.go
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Erro na compilação!" -ForegroundColor Red
+    exit 1
+}
+Write-Host "Compilação concluída!" -ForegroundColor Green
+
 # Define o diretório do projeto
 $projectDir = Get-Location
 
 # Comandos para cada terminal com títulos, formatação e logs
-$terminal0Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 0 (Processo 0)'; Write-Host '==========================================' -ForegroundColor Green; Write-Host '           DIMEX - TERMINAL 0 (Processo 0)           ' -ForegroundColor Green; Write-Host '==========================================' -ForegroundColor Green; Write-Host ''; go run useDIMEX-f.go 0 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_0.log'; Write-Host ''; Write-Host '==========================================' -ForegroundColor Green; Write-Host '           FIM - TERMINAL 0 (Processo 0)           ' -ForegroundColor Green; Write-Host '==========================================' -ForegroundColor Green"
+$terminal0Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 0 (Processo 0)'; Write-Host '==========================================' -ForegroundColor Green; Write-Host '           DIMEX - TERMINAL 0 (Processo 0)           ' -ForegroundColor Green; Write-Host '==========================================' -ForegroundColor Green; Write-Host ''; .\dimex_test.exe 0 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_0.log'; Write-Host ''; Write-Host '==========================================' -ForegroundColor Green; Write-Host '           FIM - TERMINAL 0 (Processo 0)           ' -ForegroundColor Green; Write-Host '==========================================' -ForegroundColor Green"
 
-$terminal1Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 1 (Processo 1)'; Write-Host '==========================================' -ForegroundColor Blue; Write-Host '           DIMEX - TERMINAL 1 (Processo 1)           ' -ForegroundColor Blue; Write-Host '==========================================' -ForegroundColor Blue; Write-Host ''; go run useDIMEX-f.go 1 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_1.log'; Write-Host ''; Write-Host '==========================================' -ForegroundColor Blue; Write-Host '           FIM - TERMINAL 1 (Processo 1)           ' -ForegroundColor Blue; Write-Host '==========================================' -ForegroundColor Blue"
+$terminal1Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 1 (Processo 1)'; Write-Host '==========================================' -ForegroundColor Blue; Write-Host '           DIMEX - TERMINAL 1 (Processo 1)           ' -ForegroundColor Blue; Write-Host '==========================================' -ForegroundColor Blue; Write-Host ''; .\dimex_test.exe 1 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_1.log'; Write-Host ''; Write-Host '==========================================' -ForegroundColor Blue; Write-Host '           FIM - TERMINAL 1 (Processo 1)           ' -ForegroundColor Blue; Write-Host '==========================================' -ForegroundColor Blue"
 
-$terminal2Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 2 (Processo 2)'; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host '           DIMEX - TERMINAL 2 (Processo 2)           ' -ForegroundColor Magenta; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host ''; go run useDIMEX-f.go 2 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_2.log'; Write-Host ''; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host '           FIM - TERMINAL 2 (Processo 2)           ' -ForegroundColor Magenta; Write-Host '==========================================' -ForegroundColor Magenta"
+$terminal2Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 2 (Processo 2)'; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host '           DIMEX - TERMINAL 2 (Processo 2)           ' -ForegroundColor Magenta; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host ''; .\dimex_test.exe 2 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_2.log'; Write-Host ''; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host '           FIM - TERMINAL 2 (Processo 2)           ' -ForegroundColor Magenta; Write-Host '==========================================' -ForegroundColor Magenta"
 
 # Abre os 3 terminais
 Write-Host "Iniciando Terminal 0 (Processo 0)..." -ForegroundColor Green

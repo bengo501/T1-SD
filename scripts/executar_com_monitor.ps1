@@ -11,15 +11,24 @@ if (Test-Path "logs/terminal_2.log") { Remove-Item "logs/terminal_2.log" -Force 
 
 Write-Host "Arquivos anteriores removidos" -ForegroundColor Cyan
 
+# Compila o projeto primeiro
+Write-Host "Compilando o projeto..." -ForegroundColor Yellow
+go build -o dimex_test.exe useDIMEX-f.go
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Erro na compilação!" -ForegroundColor Red
+    exit 1
+}
+Write-Host "Compilação concluída!" -ForegroundColor Green
+
 # Define o diretório do projeto
 $projectDir = Get-Location
 
 # Comandos para cada terminal com formatação melhorada
-$terminal0Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 0 (Processo 0)'; Write-Host '==========================================' -ForegroundColor Green; Write-Host '           DIMEX - TERMINAL 0 (Processo 0)           ' -ForegroundColor Green; Write-Host '==========================================' -ForegroundColor Green; Write-Host ''; go run useDIMEX-f.go 0 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_0.log'"
+$terminal0Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 0 (Processo 0)'; Write-Host '==========================================' -ForegroundColor Green; Write-Host '           DIMEX - TERMINAL 0 (Processo 0)           ' -ForegroundColor Green; Write-Host '==========================================' -ForegroundColor Green; Write-Host ''; .\dimex_test.exe 0 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_0.log'"
 
-$terminal1Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 1 (Processo 1)'; Write-Host '==========================================' -ForegroundColor Blue; Write-Host '           DIMEX - TERMINAL 1 (Processo 1)           ' -ForegroundColor Blue; Write-Host '==========================================' -ForegroundColor Blue; Write-Host ''; go run useDIMEX-f.go 1 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_1.log'"
+$terminal1Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 1 (Processo 1)'; Write-Host '==========================================' -ForegroundColor Blue; Write-Host '           DIMEX - TERMINAL 1 (Processo 1)           ' -ForegroundColor Blue; Write-Host '==========================================' -ForegroundColor Blue; Write-Host ''; .\dimex_test.exe 1 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_1.log'"
 
-$terminal2Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 2 (Processo 2)'; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host '           DIMEX - TERMINAL 2 (Processo 2)           ' -ForegroundColor Magenta; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host ''; go run useDIMEX-f.go 2 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_2.log'"
+$terminal2Cmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - TERMINAL 2 (Processo 2)'; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host '           DIMEX - TERMINAL 2 (Processo 2)           ' -ForegroundColor Magenta; Write-Host '==========================================' -ForegroundColor Magenta; Write-Host ''; .\dimex_test.exe 2 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002 *>&1 | Tee-Object -FilePath 'logs/terminal_2.log'"
 
 $monitorCmd = "cd '$projectDir'; `$Host.UI.RawUI.WindowTitle = 'DIMEX - MONITOR (mxOUT.txt)'; Write-Host '==========================================' -ForegroundColor Yellow; Write-Host '           DIMEX - MONITOR (mxOUT.txt)           ' -ForegroundColor Yellow; Write-Host '==========================================' -ForegroundColor Yellow; Write-Host ''; Write-Host 'Monitorando mxOUT.txt em tempo real...' -ForegroundColor Cyan; Write-Host 'Pressione Ctrl+C para parar o monitoramento' -ForegroundColor Gray; Write-Host ''; while (`$true) { if (Test-Path 'logs/mxOUT.txt') { `$content = Get-Content 'logs/mxOUT.txt' -Raw; if (`$content) { Clear-Host; Write-Host '==========================================' -ForegroundColor Yellow; Write-Host '           DIMEX - MONITOR (mxOUT.txt)           ' -ForegroundColor Yellow; Write-Host '==========================================' -ForegroundColor Yellow; Write-Host ''; Write-Host 'Conteudo atual do mxOUT.txt:' -ForegroundColor Cyan; Write-Host '-' * 60 -ForegroundColor Gray; Write-Host `$content -ForegroundColor White; Write-Host '-' * 60 -ForegroundColor Gray; `$length = `$content.Length; Write-Host 'Tamanho: ' + `$length + ' caracteres' -ForegroundColor Green; `$pattern = `$content -replace '[\r\n]', ''; if (`$pattern -match '^(\|\.)+$') { Write-Host 'Padrao CORRETO detectado!' -ForegroundColor Green } else { Write-Host 'Padrao pode estar incorreto!' -ForegroundColor Yellow } } else { Write-Host 'Aguardando conteudo...' -ForegroundColor Gray } } else { Write-Host 'Aguardando criacao do arquivo...' -ForegroundColor Gray } Start-Sleep 1 }"
 

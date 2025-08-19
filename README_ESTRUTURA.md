@@ -1,35 +1,33 @@
-# Estrutura Organizada do Projeto DIMEX
+# Estrutura do Projeto DIMEX
 
 ```
 T1-SD/
-├── scripts/           # Todos os scripts PowerShell
+├── scripts/           # Scripts PowerShell
 │   ├── executar_simples.ps1
 │   ├── executar_com_monitor.ps1
-│   ├── executar_completo.ps1
 │   ├── ver_logs.ps1
 │   └── ver_logs_tempo_real.ps1
-├── logs/              # Todos os logs gerados
+├── logs/              # Logs gerados
 │   ├── terminal_0.log
 │   ├── terminal_1.log
 │   ├── terminal_2.log
 │   └── mxOUT.txt
-├── DIMEX/             # Implementação do algoritmo
-├── PP2PLink/          # Camada de comunicação
-├── executar.ps1          # Script principal (menu)
-├── useDIMEX-f.go         # Programa principal
-└── README.md             # Documentação original
+├── DIMEX/             # Algoritmo de exclusão mútua
+├── PP2PLink/          # Comunicação ponto-a-ponto
+├── executar.ps1       # Script principal
+├── useDIMEX-f.go      # Programa principal
+└── README.md          # Documentação
 ```
 
-## **Como Usar**
+## Como Usar
 
-### **Opção 1: Script Principal**
+### Opção 1: Script Principal
 ```powershell
 .\executar.ps1
 ```
-- Menu interativo com todas as opções
-- Facilita a execução dos scripts organizados
+Menu interativo com todas as opções.
 
-### **Opção 2: Execução Direta**
+### Opção 2: Execução Direta
 ```powershell
 # Executar DIMEX Simples
 .\scripts\executar_simples.ps1
@@ -44,18 +42,17 @@ T1-SD/
 .\scripts\ver_logs_tempo_real.ps1
 ```
 
-## **Scripts Disponíveis**
+## Scripts Disponíveis
 
-### **Scripts de Execução**
-- **`executar_simples.ps1`** - 3 terminais básicos
-- **`executar_com_monitor.ps1`** - 3 terminais + monitoramento
-- **`executar_completo.ps1`** - Versão avançada
+### Scripts de Execução
+- `executar_simples.ps1` - 3 terminais básicos
+- `executar_com_monitor.ps1` - 3 terminais + monitoramento
 
-### **Scripts de Visualização**
-- **`ver_logs.ps1`** - Menu interativo para visualizar logs
-- **`ver_logs_tempo_real.ps1`** - Visualização em tempo real
+### Scripts de Visualização
+- `ver_logs.ps1` - Menu para visualizar logs
+- `ver_logs_tempo_real.ps1` - Visualização em tempo real
 
-## **Arquivos de Log**
+## Arquivos de Log
 
 Todos os logs são salvos na pasta `logs/`:
 - `logs/terminal_0.log` - Log do Processo 0

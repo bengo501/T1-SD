@@ -2,115 +2,88 @@
 
 ## Visão Geral
 
-Este documento explica as mudanças e implementações realizadas no arquivo `DIMEX-Template.go`, transformando um template vazio em um sistema funcional de exclusão mútua distribuída.
+Este documento explica as implementações realizadas no arquivo `DIMEX-Template.go`, transformando um template vazio em um sistema funcional de exclusão mútua distribuída.
 
-## Objetivo do Trabalho
+## Objetivo
 
-Implementar o algoritmo de exclusão mútua distribuída que garante que **apenas um processo por vez** possa acessar a seção crítica (SC), mesmo em um sistema distribuído onde processos podem falhar ou mensagens podem ser perdidas.
+Implementar o algoritmo de exclusão mútua distribuída que garante que apenas um processo por vez possa acessar a seção crítica (SC), mesmo em um sistema distribuído.
 
-## Comparação: Template Original vs Implementação Final
+## Comparação: Template vs Implementação
 
-### **Template Original (Vazio)**
+### Template Original
 - Estrutura completa (tipos, structs, canais)
 - Inicialização básica
 - Loop principal
 - Funções auxiliares
-- **4 funções principais vazias**
-- **Sem implementação do algoritmo**
+- 4 funções principais vazias
+- Sem implementação do algoritmo
 
-### **Implementação Final (Completa)**
+### Implementação Final
 - Estrutura completa
 - Inicialização modificada
 - Loop principal adaptado
 - Funções auxiliares melhoradas
-- **4 funções principais implementadas**
-- **Algoritmo de exclusão mútua funcional**
+- 4 funções principais implementadas
+- Algoritmo de exclusão mútua funcional
 
 ## Mudanças Detalhadas
 
-### **1. IMPORTS ADICIONADOS**
+### 1. Imports Adicionados
 
 ```go
-// ORIGINAL
+// Original
 import (
     PP2PLink "SD/PP2PLink"
     "fmt"
     "strings"
 )
 
-// FINAL
+// Final
 import (
     PP2PLink "SD/PP2PLink"
     "fmt"
-    "net"           // ← ADICIONADO: Para conexões TCP
-    "strconv"       // ← ADICIONADO: Para conversão de timestamps
+    "strconv"       // Para conversão de timestamps
     "strings"
 )
 ```
 
-**Motivo**: Necessário para cache de conexões TCP e manipulação de timestamps.
-
-### **2. ESTRUTURA DE DADOS MODIFICADA**
+### 2. Estrutura de Dados Modificada
 
 ```go
 type DIMEX_Module struct {
     // ... campos existentes ...
-    nbrResps  int          // ← ADICIONADO: Contador de respostas
+    nbrResps  int          // Contador de respostas
     // ... outros campos ...
 }
 ```
 
-**Motivo**: Controlar quantas respostas foram recebidas antes de liberar acesso à SC.
+### 3. Funções Principais Implementadas
 
-### **3. INICIALIZAÇÃO MODIFICADA**
+#### A) handleUponReqEntry() - Requisição de Entrada
 
-```go
-// ORIGINAL
-p2p := PP2PLink.NewPP2PLink(_addresses[_id], _dbg)
-
-// FINAL
-p2p := &PP2PLink.PP2PLink{
-    Ind:   make(chan PP2PLink.PP2PLink_Ind_Message, 1),
-    Req:   make(chan PP2PLink.PP2PLink_Req_Message, 1),
-    Run:   false,
-    Cache: make(map[string]net.Conn),  // ← ADICIONADO
-}
-p2p.Init(_addresses[_id])  // ← MÉTODO DIFERENTE
-```
-
-**Motivo**: Usar a versão do PP2PLink com serialização do Andrius.
-
-### **4. FUNÇÕES PRINCIPAIS IMPLEMENTADAS**
-
-#### **A) handleUponReqEntry() - REQUISIÇÃO DE ENTRADA**
-
-**Template Original (VAZIO):**
+**Template Original (Vazio):**
 ```go
 func (module *DIMEX_Module) handleUponReqEntry() {
-    // FUNÇÃO COMPLETAMENTE VAZIA
-    // Só tinha comentários explicativos
+    // Função completamente vazia
 }
 ```
 
 **Implementação Final:**
 ```go
 func (module *DIMEX_Module) handleUponReqEntry() {
-    module.lcl++                    // ← IMPLEMENTADO: Incrementa relógio lógico
-    module.reqTs = module.lcl       // ← IMPLEMENTADO: Define timestamp
-    module.nbrResps = 0             // ← IMPLEMENTADO: Zera contador
+    module.lcl++              // Incrementa relógio lógico
+    module.reqTs = module.lcl // Define timestamp
+    module.nbrResps = 0       // Zera contador
     
     // Envia requisição para todos os outros processos
     for i, addr := range module.addresses {
         if i != module.id {
-            msgData := map[string]string{
-                "timestamp": strconv.Itoa(module.reqTs),
-                "processId": strconv.Itoa(module.id),
-            }
-            module.sendToLinkWithData(addr, "reqEntry", msgData, "    ")
+            msg := fmt.Sprintf("reqEntry,%d,%d", module.id, module.reqTs)
+            module.sendToLink(addr, msg, "    ")
         }
     }
     
-    module.st = wantMX              // ← IMPLEMENTADO: Muda estado
+    module.st = wantMX        // Muda estado
 }
 ```
 
@@ -121,12 +94,12 @@ func (module *DIMEX_Module) handleUponReqEntry() {
 4. Envia requisição com timestamp para todos os outros processos
 5. Muda estado para "quer SC"
 
-#### **B) handleUponReqExit() - SAÍDA DA SEÇÃO CRÍTICA**
+#### B) handleUponReqExit() - Saída da Seção Crítica
 
-**Template Original (VAZIO):**
+**Template Original (Vazio):**
 ```go
 func (module *DIMEX_Module) handleUponReqExit() {
-    // FUNÇÃO COMPLETAMENTE VAZIA
+    // Função completamente vazia
 }
 ```
 
@@ -140,10 +113,10 @@ func (module *DIMEX_Module) handleUponReqExit() {
         }
     }
     
-    module.st = noMX                // ← IMPLEMENTADO: Muda estado
+    module.st = noMX          // Muda estado
     // Limpa a lista de processos aguardando
     for i := range module.waiting {
-        module.waiting[i] = false    // ← IMPLEMENTADO: Limpa array
+        module.waiting[i] = false
     }
 }
 ```
@@ -153,22 +126,22 @@ func (module *DIMEX_Module) handleUponReqExit() {
 2. Muda estado para "não quer SC"
 3. Limpa array de processos aguardando
 
-#### **C) handleUponDeliverRespOk() - RECEBIMENTO DE RESPOSTA**
+#### C) handleUponDeliverRespOk() - Recebimento de Resposta
 
-**Template Original (VAZIO):**
+**Template Original (Vazio):**
 ```go
 func (module *DIMEX_Module) handleUponDeliverRespOk(msgOutro PP2PLink.PP2PLink_Ind_Message) {
-    // FUNÇÃO COMPLETAMENTE VAZIA
+    // Função completamente vazia
 }
 ```
 
 **Implementação Final:**
 ```go
 func (module *DIMEX_Module) handleUponDeliverRespOk(msgOutro PP2PLink.PP2PLink_Ind_Message) {
-    module.nbrResps++               // ← IMPLEMENTADO: Incrementa contador
+    module.nbrResps++         // Incrementa contador
     if module.nbrResps == len(module.addresses)-1 {
-        module.Ind <- dmxResp{}      // ← IMPLEMENTADO: Libera acesso
-        module.st = inMX             // ← IMPLEMENTADO: Muda estado
+        module.Ind <- dmxResp{} // Libera acesso
+        module.st = inMX        // Muda estado
     }
 }
 ```
@@ -178,38 +151,41 @@ func (module *DIMEX_Module) handleUponDeliverRespOk(msgOutro PP2PLink.PP2PLink_I
 2. Se recebeu todas as respostas (N-1): libera acesso à SC
 3. Muda estado para "está na SC"
 
-#### **D) handleUponDeliverReqEntry() - RECEBIMENTO DE REQUISIÇÃO**
+#### D) handleUponDeliverReqEntry() - Recebimento de Requisição
 
-**Template Original (VAZIO):**
+**Template Original (Vazio):**
 ```go
 func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink_Ind_Message) {
-    // FUNÇÃO COMPLETAMENTE VAZIA
+    // Função completamente vazia
 }
 ```
 
 **Implementação Final:**
 ```go
 func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink_Ind_Message) {
-    // Extrai timestamp da mensagem
-    otherTsStr, exists := msgOutro.Message.Data["timestamp"]
-    otherTs, err := strconv.Atoi(otherTsStr)
-    
-    // Identifica processo remetente
-    senderId := -1
-    for i, addr := range module.addresses {
-        if strings.Contains(addr, msgOutro.From) {
-            senderId = i
-            break
-        }
+    // Extrai informações da mensagem: "reqEntry,processId,timestamp"
+    parts := strings.Split(msgOutro.Message, ",")
+    if len(parts) != 3 {
+        module.outDbg("Mensagem reqEntry malformada: " + msgOutro.Message)
+        return
     }
-    
+
+    otherId, err1 := strconv.Atoi(parts[1])
+    otherTs, err2 := strconv.Atoi(parts[2])
+    if err1 != nil || err2 != nil {
+        module.outDbg("Erro ao converter ID ou timestamp: " + msgOutro.Message)
+        return
+    }
+
     // Lógica de decisão
     if module.st == noMX || (module.st == wantMX && module.reqTs > otherTs) {
-        module.sendToLink(msgOutro.From, "respOK", "    ")  // Responde OK
-    } else if module.st == inMX || (module.st == wantMX && module.reqTs < otherTs) {
-        module.waiting[senderId] = true                      // Posterga resposta
-        if otherTs > module.lcl {
-            module.lcl = otherTs                            // Atualiza relógio
+        module.sendToLink(module.addresses[otherId], "respOK", "    ")  // Responde OK
+    } else {
+        if module.st == inMX || (module.st == wantMX && module.reqTs < otherTs) {
+            module.waiting[otherId] = true                              // Posterga resposta
+            if otherTs > module.lcl {
+                module.lcl = otherTs                                    // Atualiza relógio
+            }
         }
     }
 }
@@ -218,59 +194,19 @@ func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink
 **O que faz:**
 1. Extrai timestamp da mensagem recebida
 2. Identifica qual processo enviou a mensagem
-3. **Lógica de decisão:**
+3. Lógica de decisão:
    - Se não está na SC OU tem timestamp maior → responde OK imediatamente
    - Se está na SC OU tem timestamp menor → posterga resposta
 4. Atualiza relógio lógico se necessário
 
-### **5. FUNÇÃO AUXILIAR ADICIONADA**
-
-```go
-// NOVA FUNÇÃO ADICIONADA
-func (module *DIMEX_Module) sendToLinkWithData(address string, content string, data map[string]string, space string) {
-    module.outDbg(space + " ---->>>>   to: " + address + "     msg: " + content)
-    module.Pp2plink.Req <- PP2PLink.PP2PLink_Req_Message{
-        To: address,
-        Message: PP2PLink.PP2LinkMessage{
-            Value: content,
-            Data:  data,
-        }}
-}
-```
-
-**Motivo**: Enviar mensagens com dados extras (timestamps, IDs de processo).
-
-### **6. FUNÇÃO AUXILIAR MODIFICADA**
-
-```go
-// ORIGINAL
-func (module *DIMEX_Module) sendToLink(address string, content string, space string) {
-    module.Pp2plink.Req <- PP2PLink.PP2PLink_Req_Message{
-        To:      address,
-        Message: content}  // ← String direta
-}
-
-// FINAL
-func (module *DIMEX_Module) sendToLink(address string, content string, space string) {
-    module.Pp2plink.Req <- PP2PLink.PP2PLink_Req_Message{
-        To: address,
-        Message: PP2PLink.PP2LinkMessage{
-            Value: content,
-            Data:  make(map[string]string),
-        }}  // ← PP2LinkMessage
-}
-```
-
-**Motivo**: Adaptar para usar a estrutura `PP2LinkMessage` com serialização.
-
 ## Algoritmo Implementado
 
-### **Estados do Processo:**
+### Estados do Processo:
 - `noMX`: Não quer acessar a seção crítica
 - `wantMX`: Quer acessar a seção crítica (aguardando respostas)
 - `inMX`: Está dentro da seção crítica
 
-### **Fluxo do Algoritmo:**
+### Fluxo do Algoritmo:
 
 1. **Processo quer entrar na SC:**
    - Incrementa relógio lógico
@@ -293,23 +229,21 @@ func (module *DIMEX_Module) sendToLink(address string, content string, space str
 
 ## Propriedades Garantidas
 
-### **Exclusão Mútua:**
+### Exclusão Mútua:
 - Nunca dois processos estarão na SC simultaneamente
 
-### **Liveness:**
+### Liveness:
 - Se um processo quer entrar na SC, eventualmente conseguirá
 
-### **Fairness:**
+### Fairness:
 - Processos com timestamps menores têm prioridade
 
 ## Melhorias Implementadas
 
-1. **Relógios Lógicos de Lamport** para ordenação consistente
-2. **Serialização JSON** para mensagens complexas
-3. **Cache de conexões TCP** para melhor performance
-4. **Tratamento de erros** na extração de dados
-5. **Debug mode** para acompanhar mensagens
-6. **Timestamps** para resolver conflitos de prioridade
+1. Relógios Lógicos de Lamport para ordenação consistente
+2. Tratamento de erros na extração de dados
+3. Debug mode para acompanhar mensagens
+4. Timestamps para resolver conflitos de prioridade
 
 ## Como Testar
 
