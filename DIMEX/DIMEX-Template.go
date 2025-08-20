@@ -20,10 +20,11 @@
 package DIMEX
 
 import (
-	PP2PLink "SD/PP2PLink" // Módulo de comunicação ponto-a-ponto confiável
-	"fmt"                  // Para impressão de debug e formatação de strings
-	"strconv"              // Para conversão de strings para inteiros (timestamps)
-	"strings"              // Para manipulação de strings (Contains, Split)
+	PP2PLink "SD/PP2PLink"
+	"fmt"
+	"net"
+	"strconv"
+	"strings"
 )
 
 // ------------------------------------------------------------------------------------
@@ -32,23 +33,21 @@ import (
 
 type State int // enumeracao dos estados possiveis de um processo
 const (
-	noMX   State = iota // Estado: processo não quer acessar a seção crítica
-	wantMX              // Estado: processo quer acessar a seção crítica (aguardando respostas)
-	inMX                // Estado: processo está dentro da seção crítica
+	noMX State = iota
+	wantMX
+	inMX
 )
 
 type dmxReq int // enumeracao dos tipos de requisições que a aplicação pode fazer
 const (
-	ENTER dmxReq = iota // Requisição para entrar na seção crítica
-	EXIT                // Requisição para sair da seção crítica
+	ENTER dmxReq = iota
+	EXIT
 )
 
 type dmxResp struct { // mensagem do módulo DIMEX infrmando que pode acessar - pode ser somente um sinal (vazio)
 	// mensagem para aplicacao indicando que pode prosseguir
 }
 
-// DIMEX_Module: Estrutura principal do módulo de exclusão mútua distribuída
-// Implementa o algoritmo de Lamport para exclusão mútua distribuída
 type DIMEX_Module struct {
 	Req       chan dmxReq  // canal para receber pedidos da aplicacao (REQ e EXIT)
 	Ind       chan dmxResp // canal para informar aplicacao que pode acessar
@@ -68,12 +67,16 @@ type DIMEX_Module struct {
 // ------- inicializacao
 // ------------------------------------------------------------------------------------
 
-// NewDIMEX: Construtor do módulo DIMEX
-// Inicializa o módulo com os endereços dos processos, ID e flag de debug
 func NewDIMEX(_addresses []string, _id int, _dbg bool) *DIMEX_Module {
 
 	// Cria o módulo PP2PLink para comunicação ponto-a-ponto
-	p2p := PP2PLink.NewPP2PLink(_addresses[_id], _dbg)
+	p2p := &PP2PLink.PP2PLink{
+		Ind:   make(chan PP2PLink.PP2PLink_Ind_Message, 1),
+		Req:   make(chan PP2PLink.PP2PLink_Req_Message, 1),
+		Run:   false,
+		Cache: make(map[string]net.Conn),
+	}
+	p2p.Init(_addresses[_id])
 
 	// Cria a estrutura principal do módulo DIMEX
 	dmx := &DIMEX_Module{
@@ -104,8 +107,6 @@ func NewDIMEX(_addresses []string, _id int, _dbg bool) *DIMEX_Module {
 // ------- nucleo do funcionamento
 // ------------------------------------------------------------------------------------
 
-// Start: Loop principal que processa eventos de forma atômica
-// Cada evento é processado um por vez, garantindo a semântica de concorrência
 func (module *DIMEX_Module) Start() {
 
 	go func() {
@@ -123,12 +124,12 @@ func (module *DIMEX_Module) Start() {
 
 			case msgOutro := <-module.Pp2plink.Ind: // vindo de outro processo
 				//fmt.Printf("dimex recebe da rede: ", msgOutro)
-				if strings.Contains(msgOutro.Message, "respOK") {
-					module.outDbg("         <<<---- responde! " + msgOutro.Message)
+				if strings.Contains(msgOutro.Message.Value, "respOK") {
+					module.outDbg("         <<<---- responde! " + msgOutro.Message.Value)
 					module.handleUponDeliverRespOk(msgOutro) // ENTRADA DO ALGORITMO
 
-				} else if strings.Contains(msgOutro.Message, "reqEntry") {
-					module.outDbg("          <<<---- pede??  " + msgOutro.Message)
+				} else if strings.Contains(msgOutro.Message.Value, "reqEntry") {
+					module.outDbg("          <<<---- pede??  " + msgOutro.Message.Value)
 					module.handleUponDeliverReqEntry(msgOutro) // ENTRADA DO ALGORITMO
 
 				}
@@ -143,8 +144,6 @@ func (module *DIMEX_Module) Start() {
 // ------- UPON EXIT
 // ------------------------------------------------------------------------------------
 
-// handleUponReqEntry: IMPLEMENTADO - Processa requisição de entrada na seção crítica
-// Esta função implementa o algoritmo de Lamport para solicitar acesso à SC
 func (module *DIMEX_Module) handleUponReqEntry() {
 	/*
 					upon event [ dmx, Entry  |  r ]  do
@@ -171,8 +170,6 @@ func (module *DIMEX_Module) handleUponReqEntry() {
 	module.st = wantMX // estado := queroSC - Muda estado para "quer acessar SC"
 }
 
-// handleUponReqExit: IMPLEMENTADO - Processa saída da seção crítica
-// Esta função implementa a liberação da SC e notificação de processos aguardando
 func (module *DIMEX_Module) handleUponReqExit() {
 	/*
 						upon event [ dmx, Exit  |  r  ]  do
@@ -202,8 +199,6 @@ func (module *DIMEX_Module) handleUponReqExit() {
 // ------- UPON reqEntry
 // ------------------------------------------------------------------------------------
 
-// handleUponDeliverRespOk: IMPLEMENTADO - Processa resposta de outro processo
-// Esta função implementa o recebimento de respostas e verificação se pode acessar SC
 func (module *DIMEX_Module) handleUponDeliverRespOk(msgOutro PP2PLink.PP2PLink_Ind_Message) {
 	/*
 						upon event [ pl, Deliver | p, [ respOk, r ] ]
@@ -224,9 +219,6 @@ func (module *DIMEX_Module) handleUponDeliverRespOk(msgOutro PP2PLink.PP2PLink_I
 	}
 }
 
-// handleUponDeliverReqEntry: IMPLEMENTADO - Processa requisição de outro processo
-// Esta função implementa a lógica de decisão do algoritmo de Lamport
-// Decide se responde OK imediatamente ou posterga a resposta
 func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink_Ind_Message) {
 	// outro processo quer entrar na SC
 	/*
@@ -242,9 +234,9 @@ func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink
 	*/
 
 	// Extrai informações da mensagem: "reqEntry,processId,timestamp"
-	parts := strings.Split(msgOutro.Message, ",") // Divide a mensagem por vírgulas
-	if len(parts) != 3 {                          // Verifica se a mensagem tem o formato correto
-		module.outDbg("Mensagem reqEntry malformada: " + msgOutro.Message)
+	parts := strings.Split(msgOutro.Message.Value, ",") // Divide a mensagem por vírgulas
+	if len(parts) != 3 {                                // Verifica se a mensagem tem o formato correto
+		module.outDbg("Mensagem reqEntry malformada: " + msgOutro.Message.Value)
 		return
 	}
 
@@ -252,7 +244,7 @@ func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink
 	otherId, err1 := strconv.Atoi(parts[1]) // ID do processo remetente
 	otherTs, err2 := strconv.Atoi(parts[2]) // Timestamp da requisição do outro processo
 	if err1 != nil || err2 != nil {         // Verifica se a conversão foi bem-sucedida
-		module.outDbg("Erro ao converter ID ou timestamp: " + msgOutro.Message)
+		module.outDbg("Erro ao converter ID ou timestamp: " + msgOutro.Message.Value)
 		return
 	}
 
@@ -279,32 +271,28 @@ func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink
 // ------- funcoes de ajuda
 // ------------------------------------------------------------------------------------
 
-// sendToLink: Função auxiliar para enviar mensagens via PP2PLink
-// Encapsula o envio de mensagens com debug
 func (module *DIMEX_Module) sendToLink(address string, content string, space string) {
-	module.outDbg(space + " ---->>>>   to: " + address + "     msg: " + content) // Debug
-	module.Pp2plink.Req <- PP2PLink.PP2PLink_Req_Message{                        // Envia mensagem via PP2PLink
-		To:      address, // Endereço de destino
-		Message: content} // Conteúdo da mensagem
+	module.outDbg(space + " ---->>>>   to: " + address + "     msg: " + content)
+	module.Pp2plink.Req <- PP2PLink.PP2PLink_Req_Message{
+		To: address,
+		Message: PP2PLink.PP2LinkMessage{
+			Value: content,
+			Data:  make(map[string]string),
+		}}
 }
 
-// before: Função auxiliar para comparar timestamps (usada para ordenação)
-// Implementa a lógica de ordenação de Lamport: timestamp menor tem prioridade
-// Em caso de timestamps iguais, ID menor tem prioridade
 func before(oneId, oneTs, othId, othTs int) bool {
-	if oneTs < othTs { // Se timestamp é menor, tem prioridade
+	if oneTs < othTs {
 		return true
-	} else if oneTs > othTs { // Se timestamp é maior, não tem prioridade
+	} else if oneTs > othTs {
 		return false
-	} else { // Se timestamps são iguais, desempata por ID
-		return oneId < othId // ID menor tem prioridade
+	} else {
+		return oneId < othId
 	}
 }
 
-// outDbg: Função para impressão de debug
-// Imprime mensagens de debug apenas se a flag dbg estiver ativa
 func (module *DIMEX_Module) outDbg(s string) {
-	if module.dbg { // Só imprime se debug estiver ativo
+	if module.dbg {
 		fmt.Println(". . . . . . . . . . . . [ DIMEX : " + s + " ]")
 	}
 }

@@ -17,138 +17,227 @@
 package PP2PLink
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"strconv"
+	"strings"
+	"sync"
+	"time"
 )
+
+type PP2LinkMessage struct {
+	Value string
+	Data  map[string]string
+}
 
 type PP2PLink_Req_Message struct {
 	To      string
-	Message string
+	Message PP2LinkMessage
 }
 
 type PP2PLink_Ind_Message struct {
 	From    string
-	Message string
+	Message PP2LinkMessage
 }
 
 type PP2PLink struct {
 	Ind   chan PP2PLink_Ind_Message
 	Req   chan PP2PLink_Req_Message
 	Run   bool
-	dbg   bool
-	Cache map[string]net.Conn // cache de conexoes - reaproveita conexao com destino ao inves de abrir outra
+	Cache map[string]net.Conn
+	mutex sync.RWMutex // Proteção para acesso concorrente ao cache
 }
 
-func NewPP2PLink(_address string, _dbg bool) *PP2PLink {
-	p2p := &PP2PLink{
-		Req:   make(chan PP2PLink_Req_Message, 1),
-		Ind:   make(chan PP2PLink_Ind_Message, 1),
-		Run:   true,
-		dbg:   _dbg,
-		Cache: make(map[string]net.Conn)}
-	p2p.outDbg(" Init PP2PLink!")
-	p2p.Start(_address)
-	return p2p
-}
-
-func (module *PP2PLink) outDbg(s string) {
-	if module.dbg {
-		fmt.Println(". . . . . . . . . . . . . . . . . [ PP2PLink msg : " + s + " ]")
+func (module *PP2PLink) Init(address string) {
+	fmt.Println("[PP LINK] - Init PP2PLink!")
+	if module.Run {
+		return
 	}
+
+	module.Cache = make(map[string]net.Conn)
+	module.Run = true
+	module.Start(address)
 }
 
 func (module *PP2PLink) Start(address string) {
-
-	// PROCESSO PARA RECEBIMENTO DE MENSAGENS
 	go func() {
-		listen, _ := net.Listen("tcp4", address)
+		listen, err := net.Listen("tcp4", address)
+		if err != nil {
+			fmt.Printf("[PP2PLink] ERRO CRÍTICO: Não foi possível iniciar listener em %s: %v\n", address, err)
+			return
+		}
+		defer listen.Close()
+
 		for {
-			// aceita repetidamente tentativas novas de conexao
 			conn, err := listen.Accept()
-			module.outDbg("ok   : conexao aceita com outro processo.")
-			// para cada conexao lanca rotina de tratamento
-			go func() {
-				// repetidamente recebe mensagens na conexao TCP (sem fechar)
-				// e passa para modulo de cima
-				for { //                              // enquanto conexao aberta
+			if err != nil {
+				fmt.Printf("[PP2PLink] Erro ao aceitar conexão: %v\n", err)
+				continue
+			}
+
+			go func(connection net.Conn) {
+				defer connection.Close()
+
+				for {
+					// Define timeout para leitura
+					connection.SetReadDeadline(time.Now().Add(30 * time.Second))
+
+					bufTam := make([]byte, 4)
+					_, err := io.ReadFull(connection, bufTam)
 					if err != nil {
-						fmt.Println(".", err)
-						break
+						if err != io.EOF {
+							fmt.Printf("[PP2PLink] Erro ao ler tamanho da mensagem: %v\n", err)
+						}
+						return
 					}
-					bufTam := make([]byte, 4) //       // le tamanho da mensagem
-					_, err := io.ReadFull(conn, bufTam)
-					if err != nil {
-						module.outDbg("erro : " + err.Error() + " conexao fechada pelo outro processo.")
-						break
-					}
+
 					tam, err := strconv.Atoi(string(bufTam))
-					bufMsg := make([]byte, tam)        // declara buffer do tamanho exato
-					_, err = io.ReadFull(conn, bufMsg) // le do tamanho do buffer ou da erro
 					if err != nil {
-						fmt.Println("@", err)
-						break
+						fmt.Printf("[PP2PLink] Erro ao converter tamanho: %v\n", err)
+						continue
 					}
+
+					bufMsg := make([]byte, tam)
+					_, err = io.ReadFull(connection, bufMsg)
+					if err != nil {
+						fmt.Printf("[PP2PLink] Erro ao ler mensagem: %v\n", err)
+						return
+					}
+
+					bufMsgAsStruct := StringToMessage(string(bufMsg))
 					msg := PP2PLink_Ind_Message{
-						From:    conn.RemoteAddr().String(),
-						Message: string(bufMsg)}
-					// ATE AQUI:  procedimentos para receber msg
-					module.Ind <- msg //               // repassa mensagem para modulo superior
+						From:    connection.RemoteAddr().String(),
+						Message: bufMsgAsStruct,
+					}
+					module.Ind <- msg
 				}
-			}()
+			}(conn)
 		}
 	}()
 
-	// PROCESSO PARA ENVIO DE MENSAGENS
 	go func() {
 		for {
 			message := <-module.Req
-			module.Send(message)
+			go module.Send(message)
 		}
 	}()
 }
 
 func (module *PP2PLink) Send(message PP2PLink_Req_Message) {
+	value := message.Message.Value
+	if strings.Contains(value, "delay") {
+		time.Sleep(3 * time.Second)
+	}
+
 	var conn net.Conn
 	var ok bool
 	var err error
 
-	// ja existe uma conexao aberta para aquele destinatario?
+	// Proteção para acesso concorrente ao cache
+	module.mutex.RLock()
 	if conn, ok = module.Cache[message.To]; ok {
-	} else { // se nao existe, abre e guarda na cache
-		conn, err = net.Dial("tcp", message.To)
-		module.outDbg("ok   : conexao iniciada com outro processo")
+		// Testa se a conexão ainda está válida
+		conn.SetWriteDeadline(time.Now().Add(1 * time.Second))
+		_, err = conn.Write([]byte{})
 		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		module.Cache[message.To] = conn
-	}
-	// calcula tamanho da mensagem e monta string de 4 caracteres numericos com o tamanho.
-	// completa com 0s aa esquerda para fechar tamanho se necessario.
-	str := strconv.Itoa(len(message.Message))
-	for len(str) < 4 {
-		str = "0" + str
-	}
-	if !(len(str) == 4) {
-		module.outDbg("ERROR AT PPLINK MESSAGE SIZE CALCULATION - INVALID MESSAGES MAY BE IN TRANSIT")
-	}
-	_, err = fmt.Fprintf(conn, str)             // escreve 4 caracteres com tamanho
-	_, err = fmt.Fprintf(conn, message.Message) // escreve a mensagem com o tamanho calculado
-	if err != nil {
-		module.outDbg("erro : " + err.Error() + ". Conexao fechada. 1 tentativa de reabrir:")
-		conn, err = net.Dial("tcp", message.To)
-		if err != nil {
-			//fmt.Println(err)
-			module.outDbg("       " + err.Error())
-			return
+			// Remove a conexão inválida do cache
+			module.mutex.RUnlock()
+			module.mutex.Lock()
+			delete(module.Cache, message.To)
+			module.mutex.Unlock()
+			conn = nil
+			ok = false
 		} else {
-			module.outDbg("ok   : conexao iniciada com outro processo.")
+			module.mutex.RUnlock()
 		}
-		module.Cache[message.To] = conn
-		_, err = fmt.Fprintf(conn, str)             // escreve 4 caracteres com tamanho
-		_, err = fmt.Fprintf(conn, message.Message) // escreve a mensagem com o tamanho calculado
+	} else {
+		module.mutex.RUnlock()
 	}
-	return
+
+	if !ok || conn == nil {
+		conn, err = net.DialTimeout("tcp", message.To, 5*time.Second)
+		if err != nil {
+			fmt.Printf("[PP2PLink] Erro ao conectar com %s: %v\n", message.To, err)
+			return
+		}
+		module.mutex.Lock()
+		module.Cache[message.To] = conn
+		module.mutex.Unlock()
+	}
+
+	messageAsString := MessageToString(message.Message)
+	strSize := strconv.Itoa(len(messageAsString))
+	for len(strSize) < 4 {
+		strSize = "0" + strSize
+	}
+	if !(len(strSize) == 4) {
+		fmt.Println("ERROR AT PPLINK MESSAGE SIZE CALCULATION - INVALID MESSAGES MAY BE IN TRANSIT")
+		return
+	}
+
+	// Define timeout para escrita
+	conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+
+	_, err = fmt.Fprintf(conn, strSize)
+	if err != nil {
+		fmt.Printf("[PP2PLink] Erro ao enviar tamanho: %v\n", err)
+		// Remove conexão inválida e tenta reconectar
+		module.mutex.Lock()
+		delete(module.Cache, message.To)
+		module.mutex.Unlock()
+		return
+	}
+
+	_, err = fmt.Fprintf(conn, messageAsString)
+	if err != nil {
+		fmt.Printf("[PP2PLink] Erro ao enviar mensagem: %v\n", err)
+		// Remove conexão inválida
+		module.mutex.Lock()
+		delete(module.Cache, message.To)
+		module.mutex.Unlock()
+		return
+	}
+}
+
+func StringToMessage(s string) PP2LinkMessage {
+	// Limpa a string e procura por JSON válido
+	s = strings.TrimSpace(s)
+
+	// Procura por início e fim de JSON
+	start := strings.Index(s, "{")
+	end := strings.LastIndex(s, "}")
+
+	if start == -1 || end == -1 || end <= start {
+		fmt.Printf("[PP2PLink] String não contém JSON válido: %s\n", s)
+		return PP2LinkMessage{Value: "error", Data: map[string]string{}}
+	}
+
+	jsonStr := s[start : end+1]
+
+	rawIn := json.RawMessage(jsonStr)
+	bytes, err := rawIn.MarshalJSON()
+	if err != nil {
+		fmt.Printf("[PP2PLink] Erro ao processar mensagem JSON: %v\n", err)
+		return PP2LinkMessage{Value: "error", Data: map[string]string{}}
+	}
+
+	var message PP2LinkMessage
+	err = json.Unmarshal(bytes, &message)
+	if err != nil {
+		fmt.Printf("[PP2PLink] Erro ao deserializar mensagem: %v\n", err)
+		return PP2LinkMessage{Value: "error", Data: map[string]string{}}
+	}
+	return message
+}
+
+func MessageToString(message PP2LinkMessage) string {
+	bytes, err := json.Marshal(message)
+	if err != nil {
+		fmt.Printf("[PP2PLink] Erro ao serializar mensagem: %v\n", err)
+		// Retorna uma mensagem de erro em vez de panic
+		return `{"Value":"error","Data":{}}`
+	}
+	return string(bytes)
 }
