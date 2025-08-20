@@ -72,6 +72,20 @@ func main() {
 	time.Sleep(3 * time.Second)
 
 	fmt.Printf("[APP] Iniciando loop principal\n")
+
+	// NOVO: Se for o processo 0, inicia snapshots sucessivos em uma goroutine separada
+	if id == 0 {
+		go func() {
+			snapshotCounter := 1
+			for {
+				time.Sleep(2 * time.Second) // Inicia snapshot a cada 2 segundos
+				fmt.Printf("[APP] Processo %d iniciando snapshot %d\n", id, snapshotCounter)
+				dmx.Req <- DIMEX.SNAPSHOT
+				snapshotCounter++
+			}
+		}()
+	}
+
 	for {
 		// SOLICITA ACESSO AO DIMEX
 		fmt.Printf("[APP] Processo %d solicitando acesso à seção crítica\n", id)
