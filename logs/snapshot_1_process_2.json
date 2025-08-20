@@ -1,9 +1,9 @@
 {
   "snapshot_id": 1,
   "process_id": 2,
-  "state": 1,
-  "local_clock": 1,
-  "request_timestamp": 1,
+  "state": 0,
+  "local_clock": 0,
+  "request_timestamp": 0,
   "num_responses": 0,
   "waiting": [
     false,
@@ -15,5 +15,5 @@
     "127.0.0.1:6001",
     "127.0.0.1:7002"
   ],
-  "timestamp": 1755729373339689700
+  "timestamp": 1755730941567975900
 }

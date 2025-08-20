@@ -4,7 +4,7 @@
   "state": 1,
   "local_clock": 1,
   "request_timestamp": 1,
-  "num_responses": 1,
+  "num_responses": 0,
   "waiting": [
     false,
     false,
@@ -15,5 +15,5 @@
     "127.0.0.1:6001",
     "127.0.0.1:7002"
   ],
-  "timestamp": 1755729383367905500
+  "timestamp": 1755730951586982300
 }
