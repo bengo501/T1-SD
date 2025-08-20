@@ -39,7 +39,7 @@ import (
 
 type State int // enumeracao dos estados possiveis de um processo
 const (
-	noMX   State = iota
+	noMX State = iota
 	wantMX
 	inMX
 )
