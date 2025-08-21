@@ -17,7 +17,7 @@ do {
     switch ($opcao) {
         "1" {
             Write-Host "`nExecutando DIMEX com 3 terminais..." -ForegroundColor Yellow
-            & ".\scripts\executar_com_3_terminais.ps1"
+            & ".\scripts\executar_simples.ps1"
         }
         "2" {
             Write-Host "`nExecutando DIMEX com 4 terminais (3 processos + monitor)..." -ForegroundColor Yellow
@@ -29,22 +29,22 @@ do {
         }
         "4" {
             Write-Host "`nTestando Falha 1: Violação de Exclusão Mútua..." -ForegroundColor Yellow
-            & ".\testar_falha1.ps1"
+            & ".\tests\testar_falha1.ps1"
         }
         "5" {
             Write-Host "`nTestando Falha 2: Deadlock..." -ForegroundColor Yellow
-            & ".\testar_falha2.ps1"
+            & ".\tests\testar_falha2.ps1"
         }
         "6" {
             Write-Host "`nExecutando demonstração completa..." -ForegroundColor Yellow
-            & ".\demonstracao_completa.ps1"
+            & ".\tests\demonstracao_completa.ps1"
         }
         "7" {
             Write-Host "`nSaindo..." -ForegroundColor Green
             break
         }
         default {
-            Write-Host "`n❌ Opção inválida! Digite um número de 1 a 7." -ForegroundColor Red
+            Write-Host "`nOpção inválida! Digite um número de 1 a 7." -ForegroundColor Red
         }
     }
 } while ($opcao -ne "7") 

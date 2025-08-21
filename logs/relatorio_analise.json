@@ -1,0 +1,350 @@
+{
+  "analyses": [
+    {
+      "snapshotId": 1,
+      "processStates": [
+        {
+          "snapshot_id": 1,
+          "process_id": 0,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            true,
+            false
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787432161378100
+        },
+        {
+          "snapshot_id": 1,
+          "process_id": 1,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            false,
+            false
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787432162419400
+        },
+        {
+          "snapshot_id": 1,
+          "process_id": 2,
+          "state": 0,
+          "local_clock": 0,
+          "request_timestamp": 0,
+          "num_responses": 0,
+          "waiting": [
+            false,
+            false,
+            false
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787432162936300
+        }
+      ],
+      "isValid": false,
+      "violations": [
+        "Inv4 VIOLADA: Processo 0 quer SC mas total=1 (esperado 2) - respostas=1, waiting=0"
+      ],
+      "faultDetected": false,
+      "faultType": ""
+    },
+    {
+      "snapshotId": 2,
+      "processStates": [
+        {
+          "snapshot_id": 2,
+          "process_id": 0,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            true,
+            true
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787434161465700
+        },
+        {
+          "snapshot_id": 2,
+          "process_id": 1,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            false,
+            true
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787434162532900
+        },
+        {
+          "snapshot_id": 2,
+          "process_id": 2,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 0,
+          "waiting": [
+            false,
+            false,
+            false
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787434162532900
+        }
+      ],
+      "isValid": false,
+      "violations": [
+        "Inv4 VIOLADA: Processo 0 quer SC mas total=1 (esperado 2) - respostas=1, waiting=0"
+      ],
+      "faultDetected": false,
+      "faultType": "DEADLOCK"
+    },
+    {
+      "snapshotId": 3,
+      "processStates": [
+        {
+          "snapshot_id": 3,
+          "process_id": 0,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            true,
+            true
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787436161660800
+        },
+        {
+          "snapshot_id": 3,
+          "process_id": 1,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            false,
+            true
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787436162217400
+        },
+        {
+          "snapshot_id": 3,
+          "process_id": 2,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 0,
+          "waiting": [
+            false,
+            false,
+            false
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787436162755500
+        }
+      ],
+      "isValid": false,
+      "violations": [
+        "Inv4 VIOLADA: Processo 0 quer SC mas total=1 (esperado 2) - respostas=1, waiting=0"
+      ],
+      "faultDetected": false,
+      "faultType": "DEADLOCK"
+    },
+    {
+      "snapshotId": 4,
+      "processStates": [
+        {
+          "snapshot_id": 4,
+          "process_id": 0,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            true,
+            true
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787438162077300
+        },
+        {
+          "snapshot_id": 4,
+          "process_id": 1,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            false,
+            true
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787438163169200
+        },
+        {
+          "snapshot_id": 4,
+          "process_id": 2,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 0,
+          "waiting": [
+            false,
+            false,
+            false
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787438163169200
+        }
+      ],
+      "isValid": false,
+      "violations": [
+        "Inv4 VIOLADA: Processo 0 quer SC mas total=1 (esperado 2) - respostas=1, waiting=0"
+      ],
+      "faultDetected": false,
+      "faultType": "DEADLOCK"
+    },
+    {
+      "snapshotId": 5,
+      "processStates": [
+        {
+          "snapshot_id": 5,
+          "process_id": 0,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            true,
+            true
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787440162540100
+        },
+        {
+          "snapshot_id": 5,
+          "process_id": 1,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 1,
+          "waiting": [
+            false,
+            false,
+            true
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787440163128100
+        },
+        {
+          "snapshot_id": 5,
+          "process_id": 2,
+          "state": 1,
+          "local_clock": 1,
+          "request_timestamp": 1,
+          "num_responses": 0,
+          "waiting": [
+            false,
+            false,
+            false
+          ],
+          "addresses": [
+            "127.0.0.1:5000",
+            "127.0.0.1:6001",
+            "127.0.0.1:7002"
+          ],
+          "timestamp": 1755787440163128100
+        }
+      ],
+      "isValid": false,
+      "violations": [
+        "Inv4 VIOLADA: Processo 0 quer SC mas total=1 (esperado 2) - respostas=1, waiting=0"
+      ],
+      "faultDetected": false,
+      "faultType": "DEADLOCK"
+    }
+  ],
+  "summary": {
+    "faultDetections": 0,
+    "invalidSnapshots": 5,
+    "totalSnapshots": 5
+  },
+  "timestamp": "2024-12-19"
+}

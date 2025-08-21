@@ -10,7 +10,7 @@ if (Test-Path "logs") {
 
 # Compila o projeto
 Write-Host "Compilando o projeto..." -ForegroundColor Yellow
-go build -o dimex_test.exe useDIMEX-f.go
+go build -o bin/dimex_test.exe src/useDIMEX-f.go
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Erro na compilação!" -ForegroundColor Red
     exit 1
@@ -29,17 +29,17 @@ Write-Host ""
 
 # Inicia os processos
 Write-Host "Iniciando Terminal 0 (Processo 0 - Iniciador de Snapshots)..." -ForegroundColor White
-Start-Process powershell -ArgumentList "-Command", "cd '$PWD'; .\dimex_test.exe 0 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-Command", "cd '$PWD'; .\bin\dimex_test.exe 0 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002" -WindowStyle Normal
 
 Start-Sleep 2
 
 Write-Host "Iniciando Terminal 1 (Processo 1)..." -ForegroundColor White
-Start-Process powershell -ArgumentList "-Command", "cd '$PWD'; .\dimex_test.exe 1 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-Command", "cd '$PWD'; .\bin\dimex_test.exe 1 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002" -WindowStyle Normal
 
 Start-Sleep 2
 
 Write-Host "Iniciando Terminal 2 (Processo 2)..." -ForegroundColor White
-Start-Process powershell -ArgumentList "-Command", "cd '$PWD'; .\dimex_test.exe 2 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002" -WindowStyle Normal
+Start-Process powershell -ArgumentList "-Command", "cd '$PWD'; .\bin\dimex_test.exe 2 127.0.0.1:5000 127.0.0.1:6001 127.0.0.1:7002" -WindowStyle Normal
 
 Write-Host ""
 Write-Host "3 processos iniciados!" -ForegroundColor Green
@@ -77,7 +77,7 @@ if ($snapshotFiles.Count -eq 0) {
     
     # Executa o analisador
     Write-Host "Executando análise de invariantes..." -ForegroundColor Cyan
-    .\snapshot_analyzer.exe
+    .\bin\snapshot_analyzer.exe
     
     Write-Host ""
     Write-Host "=== ARQUIVOS GERADOS ===" -ForegroundColor Cyan
