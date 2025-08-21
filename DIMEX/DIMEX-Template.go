@@ -15,22 +15,16 @@
 				handleUponReqExit()   // recebe do nivel de cima (app)
 				handleUponDeliverRespOk(msgOutro)   // recebe do nivel de baixo
 				handleUponDeliverReqEntry(msgOutro) // recebe do nivel de baixo
-				handleUponSnapshot()  // recebe do nivel de cima (app) - NOVO
-				handleUponSnapshotMarker(msgOutro) // recebe do nivel de baixo - NOVO
 */
 
 package DIMEX
 
 import (
 	PP2PLink "SD/PP2PLink"
-	"encoding/json"
 	"fmt"
 	"net"
-	"os"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
 )
 
 // ------------------------------------------------------------------------------------
@@ -48,44 +42,14 @@ type dmxReq int // enumeracao dos tipos de requisições que a aplicação pode 
 const (
 	ENTER dmxReq = iota
 	EXIT
-	SNAPSHOT // NOVO: requisição para iniciar snapshot
 )
 
 type dmxResp struct { // mensagem do módulo DIMEX infrmando que pode acessar - pode ser somente um sinal (vazio)
 	// mensagem para aplicacao indicando que pode prosseguir
 }
 
-// NOVO: Estrutura para representar o estado de um processo
-type ProcessState struct {
-	SnapshotId   int      `json:"snapshot_id"`
-	ProcessId    int      `json:"process_id"`
-	State        State    `json:"state"`
-	LocalClock   int      `json:"local_clock"`
-	RequestTs    int      `json:"request_timestamp"`
-	NumResponses int      `json:"num_responses"`
-	Waiting      []bool   `json:"waiting"`
-	Addresses    []string `json:"addresses"`
-	Timestamp    int64    `json:"timestamp"`
-}
-
-// NOVO: Estrutura para representar o estado de um canal
-type ChannelState struct {
-	SnapshotId int      `json:"snapshot_id"`
-	From       int      `json:"from"`
-	To         int      `json:"to"`
-	Messages   []string `json:"messages"`
-}
-
-// NOVO: Estrutura para snapshot completo
-type Snapshot struct {
-	SnapshotId    int                  `json:"snapshot_id"`
-	ProcessStates map[int]ProcessState `json:"process_states"`
-	ChannelStates []ChannelState       `json:"channel_states"`
-	Timestamp     int64                `json:"timestamp"`
-}
-
 type DIMEX_Module struct {
-	Req       chan dmxReq  // canal para receber pedidos da aplicacao (REQ, EXIT, SNAPSHOT)
+	Req       chan dmxReq  // canal para receber pedidos da aplicacao (REQ, EXIT)
 	Ind       chan dmxResp // canal para informar aplicacao que pode acessar
 	addresses []string     // endereco de todos, na mesma ordem
 	id        int          // identificador do processo - é o indice no array de enderecos acima
@@ -97,12 +61,6 @@ type DIMEX_Module struct {
 	dbg       bool         // flag para ativar/desativar debug
 
 	Pp2plink *PP2PLink.PP2PLink // acesso aa comunicacao enviar por PP2PLinq.Req  e receber por PP2PLinq.Ind
-
-	// NOVO: Variáveis para snapshot
-	snapshotMutex   sync.Mutex
-	activeSnapshots map[int]bool     // snapshots ativos
-	channelMessages map[int][]string // mensagens em trânsito para cada snapshot
-	nextSnapshotId  int              // próximo ID de snapshot
 }
 
 // ------------------------------------------------------------------------------------
@@ -135,11 +93,6 @@ func NewDIMEX(_addresses []string, _id int, _dbg bool) *DIMEX_Module {
 		dbg:       _dbg,                          // Flag de debug
 
 		Pp2plink: p2p, // Módulo de comunicação
-
-		// NOVO: Inicializa variáveis para snapshot
-		activeSnapshots: make(map[int]bool),
-		channelMessages: make(map[int][]string),
-		nextSnapshotId:  1,
 	}
 
 	// Inicializa o array de processos aguardando com false
@@ -168,9 +121,6 @@ func (module *DIMEX_Module) Start() {
 				} else if dmxR == EXIT {
 					module.outDbg("app libera mx")
 					module.handleUponReqExit() // ENTRADA DO ALGORITMO
-				} else if dmxR == SNAPSHOT {
-					module.outDbg("app pede snapshot")
-					module.handleUponSnapshot() // ENTRADA DO ALGORITMO
 				}
 
 			case msgOutro := <-module.Pp2plink.Ind: // vindo de outro processo
@@ -182,10 +132,6 @@ func (module *DIMEX_Module) Start() {
 				} else if strings.Contains(msgOutro.Message.Value, "reqEntry") {
 					module.outDbg("          <<<---- pede??  " + msgOutro.Message.Value)
 					module.handleUponDeliverReqEntry(msgOutro) // ENTRADA DO ALGORITMO
-
-				} else if strings.Contains(msgOutro.Message.Value, "snapshotMarker") {
-					module.outDbg("          <<<---- snapshot marker " + msgOutro.Message.Value)
-					module.handleUponSnapshotMarker(msgOutro) // ENTRADA DO ALGORITMO
 				}
 			}
 		}
@@ -212,6 +158,8 @@ func (module *DIMEX_Module) handleUponReqEntry() {
 	module.reqTs = module.lcl // myTs := lts - Define timestamp da requisição atual
 	module.nbrResps = 0       // resps := 0 - Zera contador de respostas recebidas
 
+	module.outDbg(fmt.Sprintf("handleUponReqEntry: lcl=%d, reqTs=%d, nbrResps=%d", module.lcl, module.reqTs, module.nbrResps))
+
 	// para todo processo p - Envia requisição para todos os outros processos
 	for i, addr := range module.addresses {
 		if i != module.id { // Não envia para si mesmo
@@ -222,6 +170,7 @@ func (module *DIMEX_Module) handleUponReqEntry() {
 	}
 
 	module.st = wantMX // estado := queroSC - Muda estado para "quer acessar SC"
+	module.outDbg(fmt.Sprintf("handleUponReqEntry: estado mudou para wantMX"))
 }
 
 func (module *DIMEX_Module) handleUponReqExit() {
@@ -232,9 +181,12 @@ func (module *DIMEX_Module) handleUponReqExit() {
 		    				estado := naoQueroSC
 							waiting := {}
 	*/
+	module.outDbg(fmt.Sprintf("handleUponReqExit: estado atual=%d", module.st))
+
 	// para todo [p, r, ts ] em waiting - Para cada processo aguardando resposta
 	for i, isWaiting := range module.waiting {
 		if isWaiting { // Se o processo está aguardando
+			module.outDbg(fmt.Sprintf("handleUponReqExit: enviando respOK para processo %d", i))
 			// trigger [ pl, Send | p , [ respOk, r ]  ] - Envia resposta OK
 			module.sendToLink(module.addresses[i], "respOK", "    ") // Notifica que pode acessar SC
 		}
@@ -245,6 +197,8 @@ func (module *DIMEX_Module) handleUponReqExit() {
 	for i := range module.waiting {
 		module.waiting[i] = false // Marca todos como não aguardando
 	}
+
+	module.outDbg(fmt.Sprintf("handleUponReqExit: estado mudou para noMX, waiting limpo"))
 }
 
 // ------------------------------------------------------------------------------------
@@ -264,12 +218,16 @@ func (module *DIMEX_Module) handleUponDeliverRespOk(msgOutro PP2PLink.PP2PLink_I
 	*/
 	module.nbrResps++ // resps++ - Incrementa contador de respostas recebidas
 
+	module.outDbg(fmt.Sprintf("handleUponDeliverRespOk: nbrResps=%d, total esperado=%d", module.nbrResps, len(module.addresses)-1))
+
 	// se resps = N (N = número total de processos - 1) - Se recebeu todas as respostas
 	if module.nbrResps == len(module.addresses)-1 {
+		module.outDbg("handleUponDeliverRespOk: TODAS AS RESPOSTAS RECEBIDAS! Liberando acesso à SC")
 		// então trigger [ dmx, Deliver | free2Access ] - Libera acesso à SC
 		module.Ind <- dmxResp{} // Envia sinal para aplicação indicando que pode acessar
 		// estado := estouNaSC - Muda estado para "está na SC"
 		module.st = inMX
+		module.outDbg(fmt.Sprintf("handleUponDeliverRespOk: estado mudou para inMX"))
 	}
 }
 
@@ -302,133 +260,55 @@ func (module *DIMEX_Module) handleUponDeliverReqEntry(msgOutro PP2PLink.PP2PLink
 		return
 	}
 
-	// se (estado == naoQueroSC) OR (estado == QueroSC AND myTs > ts)
-	// Lógica de decisão: responde OK se não está na SC OU tem timestamp maior (menor prioridade)
-	if module.st == noMX || (module.st == wantMX && module.reqTs > otherTs) {
-		// então trigger [ pl, Send | p , [ respOk, r ]  ] - Responde OK imediatamente
+	module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: recebido de processo %d, timestamp %d", otherId, otherTs))
+	module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: meu estado=%d, meu reqTs=%d", module.st, module.reqTs))
+
+	// CORREÇÃO: Lógica correta do algoritmo Ricart/Agrawalla
+	// Responde OK imediatamente se:
+	// 1. Não está na SC (noMX) OU
+	// 2. Está querendo SC mas tem timestamp MAIOR (menor prioridade)
+	if module.st == noMX {
+		module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: estado=noMX, respondendo OK imediatamente"))
 		module.sendToLink(module.addresses[otherId], "respOK", "    ")
-	} else {
-		// senão se (estado == estouNaSC) OR (estado == QueroSC AND myTs < ts)
-		// Posterga resposta se está na SC OU tem timestamp menor (maior prioridade)
-		if module.st == inMX || (module.st == wantMX && module.reqTs < otherTs) {
-			// então postergados := postergados + [p, r ] - Adiciona à lista de aguardando
+	} else if module.st == wantMX {
+		module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: estado=wantMX, meu reqTs=%d, otherTs=%d", module.reqTs, otherTs))
+		// CORREÇÃO: Se meu timestamp é MAIOR, respondo OK (tenho menor prioridade)
+		if module.reqTs > otherTs {
+			module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: meu timestamp MAIOR, respondendo OK (menor prioridade)"))
+			module.sendToLink(module.addresses[otherId], "respOK", "    ")
+		} else if module.reqTs < otherTs {
+			// Se meu timestamp é MENOR, postergo resposta (tenho maior prioridade)
+			module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: meu timestamp MENOR, postergando resposta (maior prioridade)"))
 			module.waiting[otherId] = true
-			// lts.ts := max(lts.ts, rts.ts) - Atualiza relógio lógico (Lamport)
+			// Atualiza relógio lógico (Lamport)
 			if otherTs > module.lcl {
 				module.lcl = otherTs
+				module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: relógio atualizado para %d", module.lcl))
+			}
+		} else {
+			// Timestamps iguais - desempata por ID do processo
+			if module.id > otherId {
+				module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: timestamps iguais, meu ID maior, respondendo OK"))
+				module.sendToLink(module.addresses[otherId], "respOK", "    ")
+			} else {
+				module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: timestamps iguais, meu ID menor, postergando resposta"))
+				module.waiting[otherId] = true
+				// Atualiza relógio lógico (Lamport)
+				if otherTs > module.lcl {
+					module.lcl = otherTs
+					module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: relógio atualizado para %d", module.lcl))
+				}
 			}
 		}
-	}
-}
-
-// ------------------------------------------------------------------------------------
-// ------- tratamento de snapshot (Chandy-Lamport)
-// ------------------------------------------------------------------------------------
-
-// handleUponSnapshot: Implementa o início de um snapshot (algoritmo de Chandy-Lamport)
-func (module *DIMEX_Module) handleUponSnapshot() {
-	module.snapshotMutex.Lock()
-	defer module.snapshotMutex.Unlock()
-
-	// Gera ID único para o snapshot
-	snapshotId := module.nextSnapshotId
-	module.nextSnapshotId++
-
-	module.outDbg(fmt.Sprintf("Iniciando snapshot %d", snapshotId))
-
-	// Marca snapshot como ativo
-	module.activeSnapshots[snapshotId] = true
-	module.channelMessages[snapshotId] = make([]string, 0)
-
-	// Grava estado local (passo 1 do algoritmo de Chandy-Lamport)
-	module.saveProcessState(snapshotId)
-
-	// Envia marcadores para todos os outros processos (passo 2)
-	for i, addr := range module.addresses {
-		if i != module.id {
-			msg := fmt.Sprintf("snapshotMarker,%d,%d", snapshotId, module.id)
-			module.sendToLink(addr, msg, "    ")
+	} else if module.st == inMX {
+		module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: estado=inMX, postergando resposta"))
+		module.waiting[otherId] = true
+		// Atualiza relógio lógico (Lamport)
+		if otherTs > module.lcl {
+			module.lcl = otherTs
+			module.outDbg(fmt.Sprintf("handleUponDeliverReqEntry: relógio atualizado para %d", module.lcl))
 		}
 	}
-}
-
-// handleUponSnapshotMarker: Processa marcador de snapshot recebido
-func (module *DIMEX_Module) handleUponSnapshotMarker(msgOutro PP2PLink.PP2PLink_Ind_Message) {
-	parts := strings.Split(msgOutro.Message.Value, ",")
-	if len(parts) != 3 {
-		module.outDbg("Mensagem snapshotMarker malformada: " + msgOutro.Message.Value)
-		return
-	}
-
-	snapshotId, err1 := strconv.Atoi(parts[1])
-	fromId, err2 := strconv.Atoi(parts[2])
-	if err1 != nil || err2 != nil {
-		module.outDbg("Erro ao converter snapshotId ou fromId: " + msgOutro.Message.Value)
-		return
-	}
-
-	module.snapshotMutex.Lock()
-	defer module.snapshotMutex.Unlock()
-
-	// Se é o primeiro marcador recebido para este snapshot
-	if !module.activeSnapshots[snapshotId] {
-		module.outDbg(fmt.Sprintf("Primeiro marcador recebido para snapshot %d", snapshotId))
-
-		// Grava estado local
-		module.saveProcessState(snapshotId)
-
-		// Marca snapshot como ativo
-		module.activeSnapshots[snapshotId] = true
-		module.channelMessages[snapshotId] = make([]string, 0)
-
-		// Envia marcadores para todos os outros processos (exceto o remetente)
-		for i, addr := range module.addresses {
-			if i != module.id && i != fromId {
-				msg := fmt.Sprintf("snapshotMarker,%d,%d", snapshotId, module.id)
-				module.sendToLink(addr, msg, "    ")
-			}
-		}
-	}
-
-	// Grava estado do canal (mensagens recebidas após o marcador)
-	// Esta implementação simplificada grava todas as mensagens recebidas
-	// Em uma implementação mais precisa, gravaria apenas mensagens recebidas após o marcador
-}
-
-// saveProcessState: Grava o estado do processo para um snapshot específico
-func (module *DIMEX_Module) saveProcessState(snapshotId int) {
-	state := ProcessState{
-		SnapshotId:   snapshotId,
-		ProcessId:    module.id,
-		State:        module.st,
-		LocalClock:   module.lcl,
-		RequestTs:    module.reqTs,
-		NumResponses: module.nbrResps,
-		Waiting:      make([]bool, len(module.waiting)),
-		Addresses:    module.addresses,
-		Timestamp:    time.Now().UnixNano(),
-	}
-
-	// Copia o array waiting
-	copy(state.Waiting, module.waiting)
-
-	// Salva em arquivo
-	filename := fmt.Sprintf("logs/snapshot_%d_process_%d.json", snapshotId, module.id)
-	file, err := os.Create(filename)
-	if err != nil {
-		module.outDbg(fmt.Sprintf("Erro ao criar arquivo de snapshot: %v", err))
-		return
-	}
-	defer file.Close()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(state); err != nil {
-		module.outDbg(fmt.Sprintf("Erro ao codificar snapshot: %v", err))
-		return
-	}
-
-	module.outDbg(fmt.Sprintf("Estado do processo salvo para snapshot %d", snapshotId))
 }
 
 // ------------------------------------------------------------------------------------

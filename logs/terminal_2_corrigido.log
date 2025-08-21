@@ -1,0 +1,13 @@
+[APP] Processo 2 iniciando
+[PP LINK] - Init PP2PLink!
+. . . . . . . . . . . . [ DIMEX : Init DIMEX! ]
+[APP] DIMEX criado
+[APP] Aguardando inicialização...
+[APP] Processo 2 solicitando acesso
+. . . . . . . . . . . . [ DIMEX : app pede mx ]
+. . . . . . . . . . . . [ DIMEX : handleUponReqEntry: lcl=1, reqTs=1, nbrResps=0 ]
+. . . . . . . . . . . . [ DIMEX :      ---->>>>   to: 127.0.0.1:5000     msg: reqEntry,2,1 ]
+. . . . . . . . . . . . [ DIMEX :      ---->>>>   to: 127.0.0.1:6001     msg: reqEntry,2,1 ]
+. . . . . . . . . . . . [ DIMEX : handleUponReqEntry: estado mudou para wantMX ]
+[PP2PLink] Erro ao conectar com 127.0.0.1:5000: dial tcp 127.0.0.1:5000: connectex: No connection could be made because the target machine actively refused it.
+[PP2PLink] Erro ao conectar com 127.0.0.1:6001: dial tcp 127.0.0.1:6001: connectex: No connection could be made because the target machine actively refused it.
