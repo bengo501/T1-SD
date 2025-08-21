@@ -1,4 +1,5 @@
-# Sistema DIMEX - Exclusao Mutua Distribuida
+# Trabalho 1 - Sistemas Distribuídos 2025/2
+## Sistema DIMEX - Exclusao Mutua Distribuida
 
 ## Descricao
 Implementacao do algoritmo de **Exclusao Mutua Distribuida (DiMeX)** em Go, conforme especificacao do Trabalho 1 de Sistemas Distribuidos.
