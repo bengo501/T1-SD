@@ -1,0 +1,11 @@
+# Ignore node.js logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Ignore log files
+*.log
+
+# Ignore logs directory
+logs/
+*.log.*

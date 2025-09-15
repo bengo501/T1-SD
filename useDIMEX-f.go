@@ -48,17 +48,20 @@ func main() {
 
 	id, _ := strconv.Atoi(os.Args[1])
 	addresses := os.Args[2:]
-	fmt.Printf("[APP] Iniciando processo %d com endereços: %v\n", id, addresses)
+	fmt.Printf("[APP] Iniciando processo %d com enderecos: %v\n", id, addresses)
 
 	var dmx *DIMEX.DIMEX_Module = DIMEX.NewDIMEX(addresses, id, true)
-	fmt.Printf("[APP] Módulo DIMEX criado: %v\n", dmx)
+	fmt.Printf("[APP] Modulo DIMEX criado: %v\n", dmx)
 
 	// INICIALIZA O MÓDULO DIMEX
-	dmx.Start()
-	fmt.Printf("[APP] Módulo DIMEX iniciado\n")
+	// dmx.Start()
+	// novo start com snapshot já embutido
+	dmx.StartSnapshotting(10 * time.Second) // A cada 10 segundos, o processo 0 inicia um novo snapshot
+	fmt.Printf("[APP] Modulo DIMEX iniciado\n")
 
 	// abre arquivo que TODOS processos devem poder usar
 	fmt.Printf("[APP] Abrindo arquivo logs/mxOUT.txt\n")
+
 	file, err := os.OpenFile("./logs/mxOUT.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		fmt.Printf("[APP] Erro ao abrir arquivo: %v\n", err)
@@ -68,18 +71,18 @@ func main() {
 	fmt.Printf("[APP] Arquivo aberto com sucesso\n")
 
 	// espera para facilitar inicializacao de todos processos (a mao)
-	fmt.Printf("[APP] Aguardando 3 segundos para inicialização...\n")
+	fmt.Printf("[APP] Aguardando 3 segundos para inicializacao...\n")
 	time.Sleep(3 * time.Second)
 
 	fmt.Printf("[APP] Iniciando loop principal\n")
 	for {
 		// SOLICITA ACESSO AO DIMEX
-		fmt.Printf("[APP] Processo %d solicitando acesso à seção crítica\n", id)
+		fmt.Printf("[APP] Processo %d solicitando acesso a secao critica\n", id)
 		dmx.Req <- DIMEX.ENTER
-		fmt.Printf("[APP] Processo %d aguardando liberação\n", id)
+		fmt.Printf("[APP] Processo %d aguardando liberacao\n", id)
 		// ESPERA LIBERACAO DO MODULO DIMEX
 		<-dmx.Ind //
-		fmt.Printf("[APP] Processo %d recebeu liberação!\n", id)
+		fmt.Printf("[APP] Processo %d recebeu liberacao!\n", id)
 
 		// A PARTIR DAQUI ESTA ACESSANDO O ARQUIVO SOZINHO
 		fmt.Printf("[APP] Processo %d escrevendo '|.' no arquivo\n", id)
@@ -90,11 +93,11 @@ func main() {
 		}
 		file.Sync() // Força a escrita no disco
 
-		fmt.Printf("[APP] Processo %d *EM* seção crítica\n", id)
+		fmt.Printf("[APP] Processo %d *EM* secao critica\n", id)
 
 		// AGORA VAI LIBERAR O ARQUIVO PARA OUTROS
-		fmt.Printf("[APP] Processo %d liberando seção crítica\n", id)
+		fmt.Printf("[APP] Processo %d liberando secao critica\n", id)
 		dmx.Req <- DIMEX.EXIT //
-		fmt.Printf("[APP] Processo %d *FORA* seção crítica\n", id)
+		fmt.Printf("[APP] Processo %d *FORA* secao critica\n", id)
 	}
 }
