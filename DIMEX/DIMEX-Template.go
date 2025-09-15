@@ -191,7 +191,7 @@ func (module *DIMEX_Module) handleUponReqExit() {
 		if isWaiting {
 			payload := RespOkPayload{SenderId: module.id}
 			module.sendMessageTo(i, "respOk", payload)
-			module.outDbg(fmt.Sprintf("Enviou RESP de saída para P%d.", i))
+			module.outDbg(fmt.Sprintf("Enviou RESP de saida para P%d.", i))
 		}
 	}
 	// Limpa a fila de espera

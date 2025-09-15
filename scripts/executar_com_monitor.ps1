@@ -15,10 +15,10 @@ Write-Host "Arquivos anteriores removidos" -ForegroundColor Cyan
 Write-Host "Compilando o projeto..." -ForegroundColor Yellow
 go build -o dimex_test.exe useDIMEX-f.go
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "Erro na compilação!" -ForegroundColor Red
+    Write-Host "Erro na compilacao!" -ForegroundColor Red
     exit 1
 }
-Write-Host "Compilação concluída!" -ForegroundColor Green
+Write-Host "Compilacao concluida!" -ForegroundColor Green
 
 # Define o diretório do projeto
 $projectDir = Get-Location
