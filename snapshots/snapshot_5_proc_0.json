@@ -1,0 +1,16 @@
+{
+  "snapshot_id": 5,
+  "process_id": 0,
+  "local_state": {
+    "state": 1,
+    "waiting": [
+      false,
+      false,
+      true
+    ],
+    "logical_clock": 148,
+    "request_timestamp": 145,
+    "responses_count": 1
+  },
+  "channel_states": {}
+}
