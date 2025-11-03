@@ -1,0 +1,41 @@
+{
+  "snapshot_id": 3,
+  "process_id": 0,
+  "start_time": "2025-09-17T16:06:16.4088157-03:00",
+  "end_time": "2025-09-17T16:06:21.4089146-03:00",
+  "entries": [
+    {
+      "timestamp": "2025-09-17T16:06:16.4088157-03:00",
+      "process_id": 0,
+      "snapshot_id": 3,
+      "event_type": "initiated",
+      "description": "Processo 0 iniciou snapshot 3",
+      "details": "Estado atual: 1, Relógio: 148"
+    },
+    {
+      "timestamp": "2025-09-17T16:06:16.4088157-03:00",
+      "process_id": 0,
+      "snapshot_id": 3,
+      "event_type": "local_state_recorded",
+      "description": "Estado local capturado com sucesso",
+      "details": "Estado: 1, Relógio: 148, ReqTs: 145, Respostas: 1"
+    },
+    {
+      "timestamp": "2025-09-17T16:06:16.4088157-03:00",
+      "process_id": 0,
+      "snapshot_id": 3,
+      "event_type": "marker_sent",
+      "description": "Markers enviados para todos os processos",
+      "details": "Total de processos: 2"
+    },
+    {
+      "timestamp": "2025-09-17T16:06:21.4089146-03:00",
+      "process_id": 0,
+      "snapshot_id": 3,
+      "event_type": "timeout_completed",
+      "description": "Snapshot finalizado por timeout",
+      "details": "Todos os canais foram forçadamente fechados"
+    }
+  ],
+  "status": "completed"
+}
